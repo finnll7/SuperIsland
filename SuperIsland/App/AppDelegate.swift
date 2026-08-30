@@ -49,6 +49,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidBecomeActive(_ notification: Notification) {
         AppState.shared.setAppActive(true)
+        // 用户可能在系统设置中授予了日历/定位等权限后回到应用。
+        // 重新检测权限并刷新日历，确保授权后能立即加载日程。
+        CalendarManager.shared.refreshAccessStatus()
+        if PermissionsManager.shared.check(.calendar) {
+            CalendarManager.shared.reloadCalendars()
+            CalendarManager.shared.fetchTodayEvents()
+        }
     }
 
     func applicationDidResignActive(_ notification: Notification) {
