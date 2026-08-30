@@ -46,7 +46,7 @@ var pollTimer = null;
 var prevSessionStates = {};  // key "agent|session_id" -> last-seen state
 var soundsSeeded = false;    // skip sounds on the first snapshot after boot
 var doneUntil = {};          // key "agent|session_id" -> ms timestamp; while now < value, show Done (green) instead of Idle
-var DONE_DURATION_MS = 10 * 60 * 1000; // green tick sticks for 10 minutes after a session finishes, unless it starts working again
+var DONE_DURATION_MS = 30 * 1000; // green tick sticks for 30s after a session finishes, unless it starts working again
 var seenPermissions = {};    // permission_id -> true; used to pop the island once per new AskUserQuestion
 
 // --- Colors --------------------------------------------------------------
