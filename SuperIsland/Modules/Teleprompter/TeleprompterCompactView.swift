@@ -24,18 +24,18 @@ struct TeleprompterCompactView: View {
     }
 
     private var label: String {
-        guard manager.hasScript else { return "No script" }
+        guard manager.hasScript else { return "无脚本" }
         if let error = speech.error, manager.listeningMode == .wordTracking {
             return error
         }
         if manager.isPlaying, manager.listeningMode == .wordTracking {
-            guard speech.isListening else { return "Starting" }
+            guard speech.isListening else { return "启动中..." }
             if !speech.lastSpokenText.isEmpty {
                 return "\(diagnosticLabel) · \(speech.lastSpokenText.prefix(12))"
             }
-            return speech.inputLevel > 0.006 ? "Listening · \(diagnosticLabel)" : "Waiting · \(diagnosticLabel)"
+            return speech.inputLevel > 0.006 ? "正在聆听 · \(diagnosticLabel)" : "等待语音 · \(diagnosticLabel)"
         }
-        if manager.isPlaying { return "Playing" }
+        if manager.isPlaying { return "播放中" }
         return manager.listeningMode.label
     }
 

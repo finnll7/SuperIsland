@@ -108,18 +108,18 @@ function flagEmoji(trigram) {
 // ---------------------------------------------------------------------------
 
 var STAGE_LABELS = {
-  "group-stage": "Group",
-  "round-of-32": "Round of 32",
-  "round-of-16": "Round of 16",
-  "quarterfinals": "Quarter-final",
-  "semifinals": "Semi-final",
-  "3rd-place-match": "3rd place",
-  "final": "Final"
+  "group-stage": "小组赛",
+  "round-of-32": "32 强",
+  "round-of-16": "16 强",
+  "quarterfinals": "四分之一决赛",
+  "semifinals": "半决赛",
+  "3rd-place-match": "季军赛",
+  "final": "决赛"
 };
 
 function normalizeTeam(competitor) {
   var t = (competitor && competitor.team) || {};
-  var name = t.displayName || t.name || t.shortDisplayName || "TBD";
+  var name = t.displayName || t.name || t.shortDisplayName || "待定";
   var abbr = (t.abbreviation || name.slice(0, 3)).toUpperCase();
   var score = parseInt(competitor && competitor.score, 10);
   return {
@@ -180,7 +180,7 @@ function normalizeEvent(ev) {
 function matchGroupLabel(match) {
   if (match.stage !== "group-stage") return match.stageLabel;
   var letter = groupByTeam[match.home.abbr] || groupByTeam[match.away.abbr];
-  return letter ? "Group " + letter : "Group";
+  return letter ? letter + " 组" : "小组";
 }
 
 function isLive(match) { return match.state === "in"; }
@@ -296,7 +296,7 @@ function onGoal(match, side) {
   var team = side === "home" ? match.home : match.away;
   if (settingBool("notifyGoals", true)) {
     SuperIsland.notifications.send({
-      title: "⚽ GOOOAL — " + team.name + "!",
+      title: "⚽ 进球 — " + team.name + "！",
       body: flagEmoji(match.home.abbr) + " " + match.home.name + " " + scoreText(match) + " " +
         match.away.name + " " + flagEmoji(match.away.abbr) +
         (match.minute ? " · " + match.minute + "'" : ""),
@@ -314,8 +314,8 @@ function onKickoff(match) {
   if (!settingBool("notifyKickoff", true)) return;
   if (settingBool("favoriteOnlyAlerts", false) && !involvesFavorite(match)) return;
   SuperIsland.notifications.send({
-    title: "🏟️ Kickoff",
-    body: flagEmoji(match.home.abbr) + " " + match.home.name + " vs " +
+    title: "🏟️ 开球",
+    body: flagEmoji(match.home.abbr) + " " + match.home.name + " 对 " +
       match.away.name + " " + flagEmoji(match.away.abbr) + " · " + matchGroupLabel(match),
     sound: false
   });
@@ -438,8 +438,8 @@ function stepFeatured(direction) {
 // Formatting
 // ---------------------------------------------------------------------------
 
-var DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-var MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var DAY_NAMES = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+var MONTH_NAMES = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
 
 function kickoffTime(match) {
   var d = new Date(match.kickoffMs);
@@ -456,9 +456,9 @@ function dayLabel(ms) {
   var tomorrow = dayKey(Date.now() + DAY_MS);
   var yesterday = dayKey(Date.now() - DAY_MS);
   var key = dayKey(ms);
-  if (key === today) return "Today";
-  if (key === tomorrow) return "Tomorrow";
-  if (key === yesterday) return "Yesterday";
+  if (key === today) return "今天";
+  if (key === tomorrow) return "明天";
+  if (key === yesterday) return "昨天";
   var d = new Date(ms);
   return DAY_NAMES[d.getDay()] + " " + MONTH_NAMES[d.getMonth()] + " " + d.getDate();
 }
@@ -510,7 +510,7 @@ function compactGoalView() {
   var team = celebration.side === "home" ? live.home : live.away;
   return View.hstack([
     View.animate(View.icon("soccerball.inverse", { size: 15, color: "white" }), "spin"),
-    View.animate(View.text("GOAL!", { style: "title", color: PITCH_GREEN }), "blink"),
+    View.animate(View.text("进球！", { style: "title", color: PITCH_GREEN }), "blink"),
     flagView(team, 16),
     View.text(scoreText(live), { style: "monospaced", color: "white" })
   ], { spacing: 6, align: "center" });
@@ -554,7 +554,7 @@ function compactView() {
   if (!match) {
     return View.hstack([
       View.icon("soccerball", { size: 13, color: DIM }),
-      View.text(fetchError ? "offline" : "no matches", { style: "footnote", color: DIM })
+      View.text(fetchError ? "离线" : "无比赛", { style: "footnote", color: DIM })
     ], { spacing: 5, align: "center" });
   }
   return compactMatchView(match);
@@ -579,7 +579,7 @@ function minimalLeading() {
 
 function minimalTrailing() {
   if (isCelebrating()) {
-    return View.animate(View.text("GOAL!", { style: "monospacedSmall", color: PITCH_GREEN }), "blink");
+    return View.animate(View.text("进球！", { style: "monospacedSmall", color: PITCH_GREEN }), "blink");
   }
   var match = featuredMatch();
   if (!match) return View.text("--", { style: "monospacedSmall", color: DIM });
@@ -608,8 +608,8 @@ function expandedView() {
     return View.hstack([
       View.icon("soccerball", { size: 24, color: DIM }),
       View.vstack([
-        View.text("World Cup 2026", { style: "title", color: "white" }),
-        View.text(fetchError ? "Can't reach ESPN — retrying" : "No fixtures in window", { style: "footnote", color: DIM })
+        View.text("2026 世界杯", { style: "title", color: "white" }),
+        View.text(fetchError ? "无法连接 ESPN — 正在重试" : "窗口期内没有赛程", { style: "footnote", color: DIM })
       ], { spacing: 2, align: "leading" })
     ], { spacing: 10, align: "center" });
   }
@@ -618,7 +618,7 @@ function expandedView() {
 
   var centerTop;
   if (celebratingThis) {
-    centerTop = View.animate(View.text("GOAL!", { style: "title", color: PITCH_GREEN }), "blink");
+    centerTop = View.animate(View.text("进球！", { style: "title", color: PITCH_GREEN }), "blink");
   } else if (match.state === "pre") {
     centerTop = View.text(kickoffTime(match), { style: "title", color: "white" });
   } else {
@@ -627,14 +627,14 @@ function expandedView() {
 
   var centerBottom;
   if (match.isHalftime) {
-    centerBottom = View.text("Half-time", { style: "footnote", color: GOLD });
+    centerBottom = View.text("中场休息", { style: "footnote", color: GOLD });
   } else if (isLive(match)) {
     centerBottom = View.hstack([
       liveDot(5),
-      View.text((match.minute || "0") + "' live", { style: "footnote", color: LIVE_RED })
+      View.text((match.minute || "0") + "' 进行中", { style: "footnote", color: LIVE_RED })
     ], { spacing: 3, align: "center" });
   } else if (match.state === "post") {
-    centerBottom = View.text("Full-time", { style: "footnote", color: DIM });
+    centerBottom = View.text("比赛结束", { style: "footnote", color: DIM });
   } else {
     centerBottom = View.text(dayLabel(match.kickoffMs), { style: "footnote", color: DIM });
   }
@@ -696,7 +696,7 @@ function fixtureRow(match) {
   );
 
   var mid = match.state === "pre"
-    ? View.text("vs", { style: "monospacedSmall", color: FAINT })
+    ? View.text("对", { style: "monospacedSmall", color: FAINT })
     : View.text(scoreText(match), { style: "monospaced", color: celebratingThis ? PITCH_GREEN : "white" });
 
   var dimWinners = match.state === "post";
@@ -725,7 +725,7 @@ function heroCard(match) {
 
   var centerTop;
   if (celebratingThis) {
-    centerTop = View.animate(View.text("GOAL!", { style: "largeTitle", color: PITCH_GREEN }), "blink");
+    centerTop = View.animate(View.text("进球！", { style: "largeTitle", color: PITCH_GREEN }), "blink");
   } else if (match.state === "pre") {
     centerTop = View.text(kickoffTime(match), { style: "largeTitle", color: "white" });
   } else {
@@ -734,16 +734,16 @@ function heroCard(match) {
 
   var centerBottom;
   if (match.isHalftime) {
-    centerBottom = View.text("Half-time", { style: "caption", color: GOLD });
+    centerBottom = View.text("中场休息", { style: "caption", color: GOLD });
   } else if (live) {
     centerBottom = View.hstack([
       liveDot(5),
-      View.text((match.minute || "0") + "' live", { style: "caption", color: LIVE_RED })
+      View.text((match.minute || "0") + "' 进行中", { style: "caption", color: LIVE_RED })
     ], { spacing: 4, align: "center" });
   } else if (match.state === "post") {
-    centerBottom = View.text("Full-time", { style: "caption", color: DIM });
+    centerBottom = View.text("比赛结束", { style: "caption", color: DIM });
   } else {
-    centerBottom = View.text("Kickoff " + dayLabel(match.kickoffMs).toLowerCase(), { style: "caption", color: DIM });
+    centerBottom = View.text("开球 " + dayLabel(match.kickoffMs).toLowerCase(), { style: "caption", color: DIM });
   }
 
   function heroTeam(team, bouncing) {
@@ -818,7 +818,7 @@ function tabContent() {
       var rank = function (m) { return isLive(m) ? 0 : (m.state === "pre" ? 1 : 2); };
       return rank(a) - rank(b) || a.kickoffMs - b.kickoffMs;
     });
-    emptyText = "No matches today";
+    emptyText = "今天没有比赛";
 
     if (list.length > 0) {
       // Hero: the live match (or the featured one if it's today), big and
@@ -836,7 +836,7 @@ function tabContent() {
       var rest = list.filter(function (m) { return m.id !== hero.id; });
       var kids = [heroCard(hero)];
       if (rest.length > 0) {
-        kids.push(dayHeader("More today"));
+        kids.push(dayHeader("今日更多"));
         for (var r = 0; r < rest.length; r++) kids.push(fixtureRow(rest[r]));
       }
       return View.scroll(
@@ -846,18 +846,18 @@ function tabContent() {
     }
   } else if (activeTab === "fixtures") {
     list = matches.filter(function (m) { return m.state === "pre" && m.kickoffMs > now - 5 * 60 * 1000; });
-    emptyText = "No upcoming fixtures in the next week";
+    emptyText = "未来一周内没有赛程";
   } else {
     list = matches.filter(function (m) { return m.state === "post"; });
     list.sort(function (a, b) { return b.kickoffMs - a.kickoffMs; });
-    emptyText = "No recent results";
+    emptyText = "暂无近期赛果";
   }
 
   if (list.length === 0) {
     return View.frame(
       View.vstack([
         View.icon("soccerball", { size: 20, color: FAINT }),
-        View.text(fetchError ? "Can't reach ESPN — retrying" : emptyText, { style: "footnote", color: DIM })
+        View.text(fetchError ? "无法连接 ESPN — 正在重试" : emptyText, { style: "footnote", color: DIM })
       ], { spacing: 6, align: "center" }),
       { maxWidth: 9999, maxHeight: 9999, alignment: "center" }
     );
@@ -879,22 +879,22 @@ function fullExpandedView() {
 
   var header = View.hstack([
     View.icon("soccerball.inverse", { size: 13, color: PITCH_GREEN }),
-    View.text("World Cup 2026", { style: "caption", color: "white" }),
+    View.text("2026 世界杯", { style: "caption", color: "white" }),
     liveCount > 0 ? View.hstack([
       liveDot(4),
-      View.text(liveCount + " live", { style: "footnote", color: LIVE_RED })
+      View.text(liveCount + " 场进行中", { style: "footnote", color: LIVE_RED })
     ], { spacing: 3, align: "center" }) : null,
     View.spacer(),
-    tabButton("today", "Today"),
-    tabButton("fixtures", "Fixtures"),
-    tabButton("results", "Results")
+    tabButton("today", "今日"),
+    tabButton("fixtures", "赛程"),
+    tabButton("results", "赛果")
   ], { spacing: 6, align: "center" });
 
   var footer = View.padding(
     View.hstack([
       View.text(
-        fetchError ? "ESPN unreachable — retrying" :
-          (ageSec === null ? "Loading…" : "Live data: ESPN · updated " + ageSec + "s ago"),
+        fetchError ? "无法连接 ESPN — 正在重试" :
+          (ageSec === null ? "加载中…" : "实时数据：ESPN · " + ageSec + " 秒前更新"),
         { style: "footnote", color: FAINT }
       ),
       View.spacer(),

@@ -85,6 +85,15 @@ BACKUP_SUFFIX = ".agents-status.bak"
 CC_SETTINGS_PATH = pathlib.Path.home() / ".claude" / "settings.json"
 CC_HOOK_MARKER = "# cc-status-hook"
 
+# Panda Agent uses a Claude Code-compatible hook format in ~/.panda/settings.json.
+DEFAULT_PANDA_HOOK_SCRIPT = str(INSTALLED_EXT_ROOT / "hooks" / "panda-event-hook.sh")
+PANDA_HOOK_SCRIPT = (
+    os.environ.get("AGENTS_STATUS_PANDA_HOOK_SCRIPT") or
+    DEFAULT_PANDA_HOOK_SCRIPT
+)
+PANDA_SETTINGS_PATH = pathlib.Path.home() / ".panda" / "settings.json"
+PANDA_HOOK_MARKER = "# panda-status-hook"
+
 CODEX_CONFIG_PATH = pathlib.Path.home() / ".codex" / "config.toml"
 CODEX_HOOKS_PATH = pathlib.Path.home() / ".codex" / "hooks.json"
 CODEX_MARKER = "# agents-status-managed"
@@ -1535,6 +1544,119 @@ def cc_status():
 
 
 # ---------------------------------------------------------------------------
+# Panda ~/.panda/settings.json hook management
+# Panda Agent supports a Claude Code-compatible hook format configured in
+# ~/.panda/settings.json. We install the same canonical event set so the
+# bridge can track Panda session state (Working / Waiting / Idle / Error).
+# ---------------------------------------------------------------------------
+
+def _panda_event_cmd(state):
+    return f"'{PANDA_HOOK_SCRIPT}' {state} {PANDA_HOOK_MARKER}"
+
+
+def _panda_canonical_events():
+    return {
+        "SessionStart":        _panda_event_cmd("Idle"),
+        "UserPromptSubmit":    _panda_event_cmd("Working"),
+        "PreToolUse":          _panda_event_cmd("Working"),
+        "PostToolUse":         _panda_event_cmd("Auto"),
+        "PostToolUseFailure":  _panda_event_cmd("ToolFail"),
+        "Notification":        _panda_event_cmd("Waiting"),
+        "Stop":                _panda_event_cmd("Idle"),
+        "SessionEnd":          _panda_event_cmd("Ended"),
+    }
+
+
+def _panda_is_our_group(group):
+    try:
+        for h in (group.get("hooks") or []):
+            cmd = h.get("command") or ""
+            if PANDA_HOOK_MARKER in cmd:
+                return True
+            if PANDA_HOOK_SCRIPT and PANDA_HOOK_SCRIPT in cmd:
+                return True
+            if "panda-event-hook.sh" in cmd:
+                return True
+            if f"127.0.0.1:{PORT}/event" in cmd:
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _load_panda_settings():
+    if not PANDA_SETTINGS_PATH.exists():
+        return {}
+    try:
+        text = PANDA_SETTINGS_PATH.read_text()
+        return json.loads(text) if text.strip() else {}
+    except Exception as e:
+        sys.stderr.write(f"failed to parse {PANDA_SETTINGS_PATH}: {e}\n")
+        return {}
+
+
+def _save_panda_settings(d):
+    PANDA_SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = PANDA_SETTINGS_PATH.with_suffix(PANDA_SETTINGS_PATH.suffix + ".tmp")
+    tmp.write_text(json.dumps(d, indent=2) + "\n")
+    tmp.replace(PANDA_SETTINGS_PATH)
+
+
+def panda_install():
+    panda_uninstall()
+    _backup_once(PANDA_SETTINGS_PATH, BACKUP_SUFFIX)
+    d = _load_panda_settings()
+    hooks = d.setdefault("hooks", {})
+    installed = []
+    for event_name, command in _panda_canonical_events().items():
+        bucket = hooks.setdefault(event_name, [])
+        if not isinstance(bucket, list):
+            bucket = []
+            hooks[event_name] = bucket
+        bucket.append({"hooks": [{"type": "command", "command": command}]})
+        installed.append(event_name)
+    _save_panda_settings(d)
+    return installed
+
+
+def panda_uninstall():
+    if not PANDA_SETTINGS_PATH.exists():
+        return []
+    d = _load_panda_settings()
+    hooks = d.get("hooks") or {}
+    if not isinstance(hooks, dict):
+        return []
+    removed = []
+    for event_name in list(hooks.keys()):
+        bucket = hooks.get(event_name)
+        if not isinstance(bucket, list):
+            continue
+        before = len(bucket)
+        bucket[:] = [g for g in bucket if not _panda_is_our_group(g)]
+        if len(bucket) != before:
+            removed.append(event_name)
+        if not bucket:
+            del hooks[event_name]
+    if not hooks:
+        d.pop("hooks", None)
+    _save_panda_settings(d)
+    return removed
+
+
+def panda_status():
+    d = _load_panda_settings()
+    hooks = d.get("hooks") or {}
+    if not isinstance(hooks, dict):
+        return {"installed": False, "events": []}
+    present = []
+    for event_name, bucket in hooks.items():
+        if isinstance(bucket, list) and any(_panda_is_our_group(g) for g in bucket):
+            present.append(event_name)
+    primary = {"UserPromptSubmit", "PreToolUse", "Stop", "SessionEnd"}
+    return {"installed": primary.issubset(set(present)), "events": sorted(present)}
+
+
+# ---------------------------------------------------------------------------
 # Codex ~/.codex/config.toml + ~/.codex/hooks.json management
 # ---------------------------------------------------------------------------
 
@@ -1927,7 +2049,7 @@ def _parse_query(path):
 
 def _agent_param(params):
     a = (params.get("agent") or "claude").strip().lower()
-    return a if a in ("claude", "codex") else "claude"
+    return a if a in ("claude", "codex", "panda") else "claude"
 
 
 def _ttl_param(params):
@@ -2476,7 +2598,13 @@ def _route_get(path):
         return _build_response(200, "OK", {"paused": _paused})
     if path_only == "/hooks/status":
         try:
-            fn = codex_status if _agent_param(params) == "codex" else cc_status
+            agent = _agent_param(params)
+            if agent == "codex":
+                fn = codex_status
+            elif agent == "panda":
+                fn = panda_status
+            else:
+                fn = cc_status
             return _build_response(200, "OK", fn())
         except Exception as e:
             return _build_response(500, "Internal Error", {"error": str(e)})
@@ -2515,14 +2643,24 @@ def _route_post(path, body_bytes):
     if path_only == "/hooks/install":
         try:
             agent = _agent_param(params)
-            events = codex_install() if agent == "codex" else cc_install()
+            if agent == "codex":
+                events = codex_install()
+            elif agent == "panda":
+                events = panda_install()
+            else:
+                events = cc_install()
             return _build_response(200, "OK", {"ok": True, "agent": agent, "events": events})
         except Exception as e:
             return _build_response(500, "Internal Error", {"error": str(e)})
     if path_only == "/hooks/uninstall":
         try:
             agent = _agent_param(params)
-            events = codex_uninstall() if agent == "codex" else cc_uninstall()
+            if agent == "codex":
+                events = codex_uninstall()
+            elif agent == "panda":
+                events = panda_uninstall()
+            else:
+                events = cc_uninstall()
             return _build_response(200, "OK", {"ok": True, "agent": agent, "removed": events})
         except Exception as e:
             return _build_response(500, "Internal Error", {"error": str(e)})

@@ -10,10 +10,10 @@ enum HomePanel: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .none: return "Empty"
-        case .nowPlaying: return "Now Playing"
-        case .calendar: return "Calendar"
-        case .weather: return "Weather"
+        case .none: return "空白"
+        case .nowPlaying: return "正在播放"
+        case .calendar: return "日历"
+        case .weather: return "天气"
         }
     }
 
@@ -45,9 +45,9 @@ enum AnimationLevel: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .full: return "Full"
-        case .subtle: return "Subtle"
-        case .reduced: return "Reduced"
+        case .full: return "完整"
+        case .subtle: return "轻微"
+        case .reduced: return "减弱"
         }
     }
 

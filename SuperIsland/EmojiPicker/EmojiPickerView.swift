@@ -94,11 +94,11 @@ struct EmojiPickerView: View {
 
     private var emptyState: some View {
         VStack(spacing: 6) {
-            Text("No emoji found")
+            Text("未找到表情符号")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.82))
 
-            Text("Keep typing to refine the search")
+            Text("继续输入以优化搜索结果")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.4))
         }
@@ -108,7 +108,7 @@ struct EmojiPickerView: View {
 
     private var footer: some View {
         HStack {
-            Text(manager.footerLabel ?? "Recent and common suggestions")
+            Text(manager.footerLabel ?? "最近与常用建议")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.48))
                 .lineLimit(1)

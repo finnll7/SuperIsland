@@ -7,18 +7,18 @@ const REFRESH_CACHE_MS = 150;
 let state = {
   state: "idle",
   loggedIn: false,
-  statusText: "Not connected",
+  statusText: "未连接",
   messages: []
 };
 let lastRefreshAt = 0;
 let replyComposer = null;
 
 const LEGACY_MEDIA_PREVIEW_LABELS = {
-  "<media:image>": "Photo",
-  "<media:video>": "Video",
-  "<media:audio>": "Audio",
-  "<media:document>": "Document",
-  "<media:sticker>": "Sticker"
+  "<media:image>": "照片",
+  "<media:video>": "视频",
+  "<media:audio>": "音频",
+  "<media:document>": "文档",
+  "<media:sticker>": "贴纸"
 };
 function renderInputComposer(options) {
   if (SuperIsland.components && typeof SuperIsland.components.inputComposer === "function") {
@@ -192,23 +192,23 @@ function refreshState(force) {
   state = {
     state: normalizeText(snapshot.state) || "idle",
     loggedIn: Boolean(snapshot.loggedIn),
-    statusText: normalizeText(snapshot.statusText) || "Not connected",
+    statusText: normalizeText(snapshot.statusText) || "未连接",
     messages
   };
 }
 
 function timeAgoLabel(timestamp) {
   const diff = Math.max(0, Math.floor(Date.now() / 1000) - timestamp);
-  if (diff < 60) return "just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 60) return "刚刚";
+  if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
+  return `${Math.floor(diff / 3600)} 小时前`;
 }
 
 function compactView() {
   refreshState();
 
   if (!state.loggedIn) {
-    const hint = shouldShowConnectionHint() ? "Scan QR in Extensions" : "WhatsApp Web";
+    const hint = shouldShowConnectionHint() ? "在扩展中扫描二维码" : "WhatsApp Web";
     return View.hstack([
       View.icon("qrcode", { size: 12, color: "green" }),
       View.text(hint, { style: "caption", color: "gray", lineLimit: 1 })
@@ -218,7 +218,7 @@ function compactView() {
   if (state.messages.length === 0) {
     return View.hstack([
       View.icon("message.fill", { size: 12, color: "green" }),
-      View.text("Connected", { style: "caption", color: "white", lineLimit: 1 })
+      View.text("已连接", { style: "caption", color: "white", lineLimit: 1 })
     ], { spacing: 6, align: "center" });
   }
 
@@ -270,7 +270,7 @@ function closeReplyComposer() {
 }
 
 function mediaPreviewSection() {
-  const previewText = replyComposer.preview || "Send a quick reply from Super Island.";
+  const previewText = replyComposer.preview || "从 Super Island 快速回复。";
   const previewMarkdown = markdownWithLinkedURL(previewText);
   const previewTextNode = View.frame(
     previewMarkdown
@@ -333,7 +333,7 @@ function replyComposerView() {
 
   headerChildren.push(
     View.frame(
-      View.text(`Reply to ${replyComposer.sender}`, { style: "headline", lineLimit: 1 }),
+      View.text(`回复 ${replyComposer.sender}`, { style: "headline", lineLimit: 1 }),
       { maxWidth: 1000, alignment: "leading" }
     )
   );
@@ -343,11 +343,11 @@ function replyComposerView() {
       View.hstack([
         ...headerChildren,
         View.spacer(),
-        View.button(View.text("Close", { style: "caption", color: "gray", lineLimit: 1 }), "close-reply")
+        View.button(View.text("关闭", { style: "caption", color: "gray", lineLimit: 1 }), "close-reply")
       ], { spacing: 8, align: "top" }),
       mediaPreviewSection(),
       renderInputComposer({
-        placeholder: `Message ${replyComposer.sender}`,
+        placeholder: `给 ${replyComposer.sender} 发消息`,
         text: "",
         action: "submit-reply",
         id: replyComposer.inputID,
@@ -370,8 +370,8 @@ function expandedView() {
 
   if (replyComposer) {
     return View.vstack([
-      View.text(`Replying to ${replyComposer.sender}`, { style: "title", lineLimit: 1 }),
-      View.text("Opened from notification. Expand to send your reply.", {
+      View.text(`正在回复 ${replyComposer.sender}`, { style: "title", lineLimit: 1 }),
+      View.text("从通知打开。展开以发送您的回复。", {
         style: "caption",
         color: "gray",
         lineLimit: 2
@@ -382,7 +382,7 @@ function expandedView() {
   if (!state.loggedIn) {
     return View.vstack([
       View.text("WhatsApp Web", { style: "title", lineLimit: 1 }),
-      View.text("Login required. Open Extensions settings and scan QR.", {
+      View.text("需要登录。请打开扩展设置并扫描二维码。", {
         style: "caption",
         color: "gray",
         lineLimit: 2
@@ -417,12 +417,12 @@ function fullExpandedView() {
   if (!state.loggedIn) {
     return View.vstack([
       View.text("WhatsApp Web", { style: "title", lineLimit: 1 }),
-      View.text("Scan QR in Extensions settings to connect.", {
+      View.text("在扩展设置中扫描二维码以连接。", {
         style: "caption",
         color: "gray",
         lineLimit: 2
       }),
-      View.button(View.text("Refresh QR", { style: "caption", color: "green", lineLimit: 1 }), "refresh-qr")
+      View.button(View.text("刷新二维码", { style: "caption", color: "green", lineLimit: 1 }), "refresh-qr")
     ], { spacing: 8, align: "leading" });
   }
 
@@ -509,7 +509,7 @@ SuperIsland.registerModule({
         return;
       }
       if (typeof SuperIsland.system.sendWhatsAppWebMessageAsync !== "function") {
-        replyComposer.error = "Reply API unavailable.";
+        replyComposer.error = "回复接口不可用。";
         refreshState(true);
         return;
       }

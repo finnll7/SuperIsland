@@ -39,7 +39,7 @@ final class FocusManager: ObservableObject {
         isActive = dndEnabled
 
         if dndEnabled {
-            focusName = "Do Not Disturb"
+            focusName = "勿扰模式"
         } else {
             focusName = ""
         }

@@ -13,7 +13,7 @@ struct MediaAppVolume: Identifiable, Equatable {
     var isPlaying: Bool
 
     var statusText: String {
-        isPlaying ? "Playing" : "Paused"
+        isPlaying ? "正在播放" : "已暂停"
     }
 }
 
@@ -23,7 +23,7 @@ final class VolumeManager: ObservableObject {
 
     @Published var volume: Float = 0
     @Published var isMuted: Bool = false
-    @Published var outputDeviceName: String = "Unknown"
+    @Published var outputDeviceName: String = "未知"
     @Published var mediaAppVolumes: [MediaAppVolume] = []
 
     private var defaultDeviceID: AudioDeviceID = 0
@@ -133,7 +133,7 @@ final class VolumeManager: ObservableObject {
     private func startMediaMonitoring() {
         mediaRefreshToken = ModuleRefreshScheduler.shared.register(
             id: "volume.mediaApps",
-            name: "Media app volume refresh",
+            name: "媒体应用音量刷新",
             module: .builtIn(.volumeHUD),
             policy: .visibleOnly(8, tolerance: 2),
             enabled: { AppState.shared.volumeHUDEnabled }

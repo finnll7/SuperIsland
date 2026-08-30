@@ -32,42 +32,42 @@ enum NowPlayingProviderStatus: Equatable {
     var title: String {
         switch self {
         case .idle:
-            return "Nothing is playing"
+            return "没有正在播放"
         case .checking(let source):
-            return "Checking \(source)"
+            return "正在检查 \(source)"
         case .playing(let source):
             return source
         case .paused(let source):
-            return "\(source) paused"
+            return "\(source) 已暂停"
         case .stale(let source):
-            return "\(source) last played"
+            return "\(source) 上次播放"
         case .browserDisabled:
-            return "Browser detection is off"
+            return "浏览器检测已关闭"
         case .permissionNeeded(let source):
-            return "\(source) needs permission"
+            return "\(source) 需要权限"
         case .unavailable(let source):
-            return "\(source) unavailable"
+            return "\(source) 不可用"
         }
     }
 
     var subtitle: String {
         switch self {
         case .idle:
-            return "Start playback to pin controls here."
+            return "开始播放以在此处固定控件。"
         case .checking:
-            return "Looking for active media."
+            return "正在查找活动的媒体。"
         case .playing:
-            return "Playback controls are ready."
+            return "播放控件已就绪。"
         case .paused:
-            return "Resume playback when you are ready."
+            return "准备好后恢复播放。"
         case .stale:
-            return "The last known track is kept here briefly."
+            return "最后已知曲目会短暂保留在此。"
         case .browserDisabled:
-            return "Enable browser media detection for Chrome playback."
+            return "启用浏览器媒体检测以支持 Chrome 播放。"
         case .permissionNeeded:
-            return "Allow automation access and browser JavaScript from Apple Events."
+            return "允许自动化访问以及浏览器中来自 Apple Events 的 JavaScript。"
         case .unavailable:
-            return "Open the app and start playback, then try again."
+            return "打开应用并开始播放，然后重试。"
         }
     }
 }

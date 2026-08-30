@@ -55,7 +55,7 @@ final class BluetoothManager: ObservableObject {
 
         refreshToken = ModuleRefreshScheduler.shared.register(
             id: "connectivity.bluetooth",
-            name: "Bluetooth fallback refresh",
+            name: "蓝牙备用刷新",
             module: .builtIn(.connectivity),
             policy: .visibleOnly(60, tolerance: 15),
             enabled: { AppState.shared.connectivityEnabled }

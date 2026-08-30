@@ -12,8 +12,8 @@ private enum ExtensionListFilter: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .all: return "All"
-        case .active: return "Active"
+        case .all: return "全部"
+        case .active: return "启用中"
         }
     }
 }
@@ -55,7 +55,7 @@ struct ExtensionsSettingsView: View {
 
     private var filterBar: some View {
         HStack(spacing: 10) {
-            Text("Filter")
+            Text("筛选")
                 .font(.system(size: 13, weight: .semibold))
 
             Picker("", selection: $listFilter) {
@@ -69,7 +69,7 @@ struct ExtensionsSettingsView: View {
 
             Spacer(minLength: 0)
 
-            Text("\(filteredManifests.count) shown")
+            Text("显示 \(filteredManifests.count) 个")
                 .font(.caption)
                 .foregroundColor(.secondary)
 
@@ -89,7 +89,7 @@ struct ExtensionsSettingsView: View {
 
     private var leftPane: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Extensions")
+            Text("扩展")
                 .font(.headline.weight(.semibold))
 
             ScrollView {
@@ -119,46 +119,46 @@ struct ExtensionsSettingsView: View {
                     extensionHeaderCard(for: manifest)
 
                     if manifest.id == "superisland.whatsapp-web" {
-                        SettingsCard(title: "WhatsApp Web Login") {
+                        SettingsCard(title: "WhatsApp Web 登录") {
                             WhatsAppWebBridgeSettingsView()
                         }
                     }
 
                     if manifest.id == linearMentionsExtensionID {
-                        SettingsCard(title: "Linear Login") {
+                        SettingsCard(title: "Linear 登录") {
                             LinearOAuthSettingsView()
                         }
                     }
 
                     if manifest.id == lastFmScrobblerExtensionID {
-                        SettingsCard(title: "Last.fm Login") {
+                        SettingsCard(title: "Last.fm 登录") {
                             LastFmOAuthSettingsView()
                         }
                     }
 
-                    SettingsCard(title: "Details") {
+                    SettingsCard(title: "详细信息") {
                         if let author = manifest.author?.name {
-                            metadataRow(label: "Author", value: author)
+                            metadataRow(label: "作者", value: author)
                         }
                         if manifest.id != linearMentionsExtensionID {
-                            metadataRow(label: "Refresh", value: "\(String(format: "%.1f", manifest.refreshInterval))s")
+                            metadataRow(label: "刷新间隔", value: "\(String(format: "%.1f", manifest.refreshInterval))s")
                         }
-                        metadataRow(label: "Triggers", value: manifest.activationTriggers.joined(separator: ", "))
+                        metadataRow(label: "触发方式", value: manifest.activationTriggers.joined(separator: ", "))
 
                         if !manifest.permissions.isEmpty {
-                            metadataRow(label: "Permissions", value: manifest.permissions.joined(separator: ", "))
+                            metadataRow(label: "权限", value: manifest.permissions.joined(separator: ", "))
                         }
                     }
 
                     if let schema = manager.settingsSchemas[manifest.id] {
-                        SettingsCard(title: "Settings") {
+                        SettingsCard(title: "设置") {
                             ExtensionSettingsRenderer(extensionID: manifest.id, schema: schema)
                         }
                     }
 
                     let logEntries = logger.entries(for: manifest.id)
                     if !logEntries.isEmpty {
-                        SettingsCard(title: "Recent Logs") {
+                        SettingsCard(title: "最近日志") {
                             VStack(alignment: .leading, spacing: 7) {
                                 ForEach(logEntries.suffix(8)) { entry in
                                     HStack(alignment: .top, spacing: 8) {
@@ -184,9 +184,9 @@ struct ExtensionsSettingsView: View {
                 Image(systemName: "puzzlepiece.extension")
                     .font(.system(size: 28))
                     .foregroundColor(.secondary)
-                Text("Select an extension")
+                Text("选择一个扩展")
                     .font(.headline)
-                Text("Choose an extension from the left panel.")
+                Text("从左侧面板选择一个扩展。")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -212,7 +212,7 @@ struct ExtensionsSettingsView: View {
 
                 Spacer()
 
-                Text(manager.runtimes[manifest.id] == nil ? "Inactive" : "Active")
+                Text(manager.runtimes[manifest.id] == nil ? "未启用" : "启用中")
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
@@ -228,7 +228,7 @@ struct ExtensionsSettingsView: View {
                 .foregroundColor(.secondary)
 
             HStack(spacing: 10) {
-                Button(manager.runtimes[manifest.id] == nil ? "Activate" : "Reload") {
+                Button(manager.runtimes[manifest.id] == nil ? "启用" : "重新加载") {
                     if manager.runtimes[manifest.id] == nil {
                         manager.activate(extensionID: manifest.id)
                     } else {
@@ -238,7 +238,7 @@ struct ExtensionsSettingsView: View {
                 .buttonStyle(.borderedProminent)
 
                 if manager.runtimes[manifest.id] != nil {
-                    Button("Deactivate") {
+                    Button("停用") {
                         manager.disableByUser(extensionID: manifest.id)
                     }
                     .buttonStyle(.bordered)
@@ -382,9 +382,9 @@ struct ExtensionsSettingsView: View {
 
     private func extensionSource(for manifest: ExtensionManifest) -> (label: String, color: Color) {
         if isInstalledExtension(manifest) {
-            return ("Installed", Color.accentColor)
+            return ("已安装", Color.accentColor)
         }
-        return ("Bundled", .secondary)
+        return ("内置", .secondary)
     }
 
     private func isInstalledExtension(_ manifest: ExtensionManifest) -> Bool {
@@ -455,7 +455,7 @@ private struct LinearOAuthSettingsView: View {
                 .buttonStyle(.borderedProminent)
 
                 if session != nil {
-                    Button("Disconnect") {
+                    Button("断开连接") {
                         disconnect()
                     }
                     .buttonStyle(.bordered)
@@ -466,7 +466,7 @@ private struct LinearOAuthSettingsView: View {
             if let session {
                 VStack(alignment: .leading, spacing: 4) {
                     if !session.scope.isEmpty {
-                        Text("Scope: \(session.scope)")
+                        Text("权限范围：\(session.scope)")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
@@ -489,9 +489,9 @@ private struct LinearOAuthSettingsView: View {
 
     private var statusTitle: String {
         if let session {
-            return session.isExpired ? "Expired" : "Logged in"
+            return session.isExpired ? "已过期" : "已登录"
         }
-        return "Not logged in"
+        return "未登录"
     }
 
     private var statusColor: Color {
@@ -504,18 +504,18 @@ private struct LinearOAuthSettingsView: View {
     private var statusMessage: String {
         if let session {
             if session.isExpired {
-                return "Your Linear session has expired. Authenticate again to resume mention syncing."
+                return "你的 Linear 会话已过期。请重新登录以继续同步提及。"
             }
-            return "Linear is authenticated. New mentions will appear in the Super Island."
+            return "Linear 已认证。新的提及将显示在灵动岛中。"
         }
-        return "Authenticate with Linear to start mention notifications and inline replies."
+        return "登录 Linear 以接收提及通知和快捷回复。"
     }
 
     private var primaryButtonTitle: String {
         if let session {
-            return session.isExpired ? "Log In Again" : "Reconnect"
+            return session.isExpired ? "重新登录" : "重新连接"
         }
-        return "Log In to Linear"
+        return "登录 Linear"
     }
 
     private func reloadSession() {
@@ -540,7 +540,7 @@ private struct LinearOAuthSettingsView: View {
 
     private func expirationLabel(expiresAt: Date, isExpired: Bool) -> String {
         let formatted = expiresAt.formatted(date: .abbreviated, time: .shortened)
-        return isExpired ? "Expired at \(formatted)" : "Expires at \(formatted)"
+        return isExpired ? "已于 \(formatted) 过期" : "将于 \(formatted) 过期"
     }
 }
 
@@ -632,7 +632,7 @@ private struct LastFmOAuthSettingsView: View {
                 .buttonStyle(.borderedProminent)
 
                 if session != nil {
-                    Button("Disconnect") {
+                    Button("断开连接") {
                         disconnect()
                     }
                     .buttonStyle(.bordered)
@@ -643,13 +643,13 @@ private struct LastFmOAuthSettingsView: View {
             if let session {
                 VStack(alignment: .leading, spacing: 4) {
                     if !session.username.isEmpty {
-                        Text("Account: \(session.username)")
+                        Text("账户：\(session.username)")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
 
                     if !session.scope.isEmpty {
-                        Text("Scope: \(session.scope)")
+                        Text("权限范围：\(session.scope)")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
@@ -672,9 +672,9 @@ private struct LastFmOAuthSettingsView: View {
 
     private var statusTitle: String {
         if let session {
-            return session.isExpired ? "Expired" : "Logged in"
+            return session.isExpired ? "已过期" : "已登录"
         }
-        return "Not logged in"
+        return "未登录"
     }
 
     private var statusColor: Color {
@@ -687,21 +687,21 @@ private struct LastFmOAuthSettingsView: View {
     private var statusMessage: String {
         if let session {
             if session.isExpired {
-                return "Your Last.fm session has expired. Authenticate again to resume scrobbling."
+                return "你的 Last.fm 会话已过期。请重新登录以继续记录收听历史。"
             }
             if !session.username.isEmpty {
-                return "Last.fm is connected as \(session.username). New plays will scrobble automatically."
+                return "Last.fm 已以 \(session.username) 登录。新的播放记录将自动同步。"
             }
-            return "Last.fm is connected. New plays will scrobble automatically."
+            return "Last.fm 已连接。新的播放记录将自动同步。"
         }
-        return "Authenticate with Last.fm to start scrobbling your listening history."
+        return "登录 Last.fm 以开始记录你的收听历史。"
     }
 
     private var primaryButtonTitle: String {
         if let session {
-            return session.isExpired ? "Log In Again" : "Reconnect"
+            return session.isExpired ? "重新登录" : "重新连接"
         }
-        return "Log In to Last.fm"
+        return "登录 Last.fm"
     }
 
     private func reloadSession() {
@@ -726,7 +726,7 @@ private struct LastFmOAuthSettingsView: View {
 
     private func expirationLabel(expiresAt: Date, isExpired: Bool) -> String {
         let formatted = expiresAt.formatted(date: .abbreviated, time: .shortened)
-        return isExpired ? "Expired at \(formatted)" : "Expires at \(formatted)"
+        return isExpired ? "已于 \(formatted) 过期" : "将于 \(formatted) 过期"
     }
 }
 
@@ -812,18 +812,18 @@ private struct WhatsAppWebBridgeSettingsView: View {
 
             HStack(spacing: 8) {
                 if bridge.connectionState == .loggedIn {
-                    Button("Log Out") {
+                    Button("退出登录") {
                         bridge.logout()
                     }
                     .buttonStyle(.bordered)
                     .tint(.red)
                 } else {
-                    Button("Start Login") {
+                    Button("开始登录") {
                         bridge.start()
                     }
                     .buttonStyle(.borderedProminent)
 
-                    Button("Refresh QR") {
+                    Button("刷新二维码") {
                         bridge.refreshQRCode()
                     }
                     .buttonStyle(.bordered)
@@ -831,12 +831,12 @@ private struct WhatsAppWebBridgeSettingsView: View {
             }
 
             if bridge.connectionState == .loggedIn {
-                Text("Connected. New messages will be synced from this login.")
+                Text("已连接。此登录下的新消息将自动同步。")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             } else if let image = qrImage {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Scan this QR with WhatsApp on your phone")
+                    Text("使用手机上的 WhatsApp 扫描此二维码")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
 
@@ -855,7 +855,7 @@ private struct WhatsAppWebBridgeSettingsView: View {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Preparing secure login session...")
+                    Text("正在准备安全登录会话...")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
@@ -875,15 +875,15 @@ private struct WhatsAppWebBridgeSettingsView: View {
     private var stateTitle: String {
         switch bridge.connectionState {
         case .idle:
-            return "Idle"
+            return "空闲"
         case .loading:
-            return "Loading"
+            return "加载中"
         case .qrReady:
-            return "QR Ready"
+            return "二维码已就绪"
         case .loggedIn:
-            return "Connected"
+            return "已连接"
         case .error:
-            return "Error"
+            return "错误"
         }
     }
 

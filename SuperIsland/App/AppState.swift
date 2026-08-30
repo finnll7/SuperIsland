@@ -1,6 +1,7 @@
 import Combine
 import SwiftUI
 import AppKit
+import IOKit.ps
 
 // MARK: - Temperature Unit
 enum TemperatureUnit: String {
@@ -30,15 +31,15 @@ enum ModuleType: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .nowPlaying: return "Now Playing"
-        case .volumeHUD: return "Volume"
-        case .battery: return "Battery"
-        case .shelf: return "Shelf"
-        case .connectivity: return "Connectivity"
-        case .calendar: return "Calendar"
-        case .weather: return "Weather"
-        case .notifications: return "Notifications"
-        case .teleprompter: return "Teleprompter"
+        case .nowPlaying: return "正在播放"
+        case .volumeHUD: return "音量"
+        case .battery: return "电量"
+        case .shelf: return "暂存"
+        case .connectivity: return "连接状态"
+        case .calendar: return "日历"
+        case .weather: return "天气"
+        case .notifications: return "通知"
+        case .teleprompter: return "提词器"
         }
     }
 
@@ -67,10 +68,10 @@ enum NotchHapticIntensity: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .off: return "Off"
-        case .subtle: return "Subtle"
-        case .medium: return "Medium"
-        case .strong: return "Strong"
+        case .off: return "关闭"
+        case .subtle: return "轻微"
+        case .medium: return "中等"
+        case .strong: return "强烈"
         }
     }
 
@@ -316,7 +317,45 @@ final class AppState: ObservableObject {
     private var systemEmojiInteractionExpiry: Date?
     private var presentationHoldModule: ActiveModule?
     private var lastNotchEntryHapticDate: Date = .distantPast
-    private init() {}
+
+    /// 是否接入交流电源（AC）。用于省电模式按电源状态自动切换。
+    @Published private(set) var isOnACPower: Bool = true
+    private var powerSourceRunLoopSource: CFRunLoopSource?
+
+    private init() {
+        installPowerSourceMonitor()
+    }
+
+    private func installPowerSourceMonitor() {
+        isOnACPower = Self.readIsOnACPower()
+
+        let callback: IOPowerSourceCallbackType = { context in
+            guard let context else { return }
+            let state = Unmanaged<AppState>.fromOpaque(context).takeUnretainedValue()
+            state.isOnACPower = AppState.readIsOnACPower()
+            state.refreshEnergyState()
+        }
+
+        guard let runLoopSource = IOPSNotificationCreateRunLoopSource(
+            callback,
+            Unmanaged.passUnretained(self).toOpaque()
+        )?.takeRetainedValue() else { return }
+
+        CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
+        powerSourceRunLoopSource = runLoopSource
+    }
+
+    private static func readIsOnACPower() -> Bool {
+        guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
+              let sources = IOPSCopyPowerSourcesList(snapshot)?.takeRetainedValue() as? [Any],
+              let first = sources.first,
+              let info = IOPSGetPowerSourceDescription(snapshot, first as CFTypeRef)?
+                .takeUnretainedValue() as? [String: Any],
+              let state = info[kIOPSPowerSourceStateKey] as? String else {
+            return true
+        }
+        return state == kIOPSACPowerValue
+    }
 
     // MARK: - Animations
 
@@ -360,7 +399,11 @@ final class AppState: ObservableObject {
     }
 
     var effectiveEnergyMode: EnergyMode {
-        ProcessInfo.processInfo.isLowPowerModeEnabled ? .lowPower : energyMode
+        // 系统低电量模式或用户手动选择低功耗时保持 Low Power。
+        if ProcessInfo.processInfo.isLowPowerModeEnabled { return .lowPower }
+        if energyMode == .lowPower { return .lowPower }
+        // 自动切换：接入电源 → Normal，电池供电 → Smart。
+        return isOnACPower ? .normal : .smart
     }
 
     var shouldReduceAnimations: Bool {

@@ -12,8 +12,8 @@ struct HomeScreenView: View {
             case 0:
                 HomeEmptyState(
                     icon: "square.grid.2x2",
-                    title: "No home modules enabled",
-                    subtitle: "Enable modules in Settings to show them here.",
+                    title: "未启用任何首页模块",
+                    subtitle: "在设置中启用模块即可在此显示。",
                     fillsAvailableSpace: true
                 )
             case 3:
@@ -158,7 +158,7 @@ private struct HomeNowPlayingPanel: View {
             return "\(artist) • \(album)"
         }
 
-        return artist ?? album ?? "Media"
+        return artist ?? album ?? "媒体"
     }
 
     private var durationLine: String {
@@ -249,8 +249,8 @@ private struct HomeCalendarPanel: View {
             if upcomingEvents.isEmpty {
                 HomeEmptyState(
                     icon: "calendar",
-                    title: "Nothing coming up",
-                    subtitle: "Your schedule is clear for now."
+                    title: "暂无日程",
+                    subtitle: "你目前没有安排。"
                 )
             } else {
                 VStack(alignment: .leading, spacing: 9) {
@@ -278,12 +278,12 @@ private struct HomeCalendarPanel: View {
 
     private var todaySubtitle: String {
         if upcomingEvents.isEmpty {
-            return "No events scheduled today"
+            return "今天没有安排"
         }
         if upcomingEvents.count == 1 {
-            return "1 event coming up"
+            return "还有 1 个活动"
         }
-        return "\(upcomingEvents.count) events coming up"
+        return "还有 \(upcomingEvents.count) 个活动"
     }
 
     private func countdown(for event: EKEvent) -> String? {
@@ -318,8 +318,8 @@ private struct HomeWeatherPanel: View {
             if isWeatherUnavailable {
                 HomeEmptyState(
                     icon: "cloud.sun",
-                    title: manager.isLoading ? "Fetching weather" : "Weather unavailable",
-                    subtitle: manager.isLoading ? "Getting your local conditions." : "Current forecast will appear here."
+                    title: manager.isLoading ? "正在获取天气" : "天气不可用",
+                    subtitle: manager.isLoading ? "正在获取你所在地区的天气状况。" : "当前预报将显示在这里。"
                 )
             } else {
                 VStack(alignment: .leading, spacing: 10) {
@@ -354,13 +354,13 @@ private struct HomeWeatherPanel: View {
 
                     HStack(spacing: 8) {
                         weatherStat(
-                            title: "High",
+                            title: "最高",
                             value: formattedTemp(manager.weather.temperatureHigh),
                             icon: "arrow.up.circle.fill",
                             tint: Color.orange.opacity(0.88)
                         )
                         weatherStat(
-                            title: "Low",
+                            title: "最低",
                             value: formattedTemp(manager.weather.temperatureLow),
                             icon: "arrow.down.circle.fill",
                             tint: Color.cyan.opacity(0.88)
@@ -415,7 +415,7 @@ private struct HomeEventRow: View {
                 .padding(.top, 5)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(event.title ?? "Upcoming event")
+                Text(event.title ?? "即将开始的活动")
                     .font(HomeTypography.bodyTitleFont)
                     .foregroundStyle(HomeTypography.secondaryText)
                     .lineLimit(1)

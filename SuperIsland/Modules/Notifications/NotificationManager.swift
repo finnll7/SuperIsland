@@ -41,20 +41,20 @@ enum NotificationFeedSource: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .extensions: return "Extension notifications"
+        case .extensions: return "扩展通知"
         case .whatsApp: return "WhatsApp"
-        case .compatibleApps: return "Compatible app broadcasts"
+        case .compatibleApps: return "兼容应用广播"
         }
     }
 
     var description: String {
         switch self {
         case .extensions:
-            return "Notifications sent by installed SuperIsland extensions."
+            return "由已安装的 SuperIsland 扩展发送的通知。"
         case .whatsApp:
-            return "Notifications from the bundled WhatsApp integration."
+            return "来自内置 WhatsApp 集成的通知。"
         case .compatibleApps:
-            return "Notification-like events from apps that publish public distributed notifications."
+            return "来自发布公开分布式通知的应用的通知类事件。"
         }
     }
 

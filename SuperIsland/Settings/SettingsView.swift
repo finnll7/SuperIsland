@@ -7,11 +7,11 @@ enum SettingsPane: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .general:    "General"
-        case .modules:    "Modules"
-        case .appearance: "Appearance"
-        case .extensions: "Extensions"
-        case .advanced:   "Advanced"
+        case .general:    "通用"
+        case .modules:    "模块"
+        case .appearance: "外观"
+        case .extensions: "扩展"
+        case .advanced:   "高级"
         }
     }
 
@@ -100,7 +100,7 @@ struct SettingsView: View {
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
                     .frame(width: 18, alignment: .center)
-                Text("Quit")
+                Text("退出")
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
                 Spacer()
@@ -216,6 +216,9 @@ struct StepperField: View {
     let range: ClosedRange<Double>
     let label: (Double) -> String
 
+    @State private var text: String = ""
+    @FocusState private var isFocused: Bool
+
     var body: some View {
         HStack(spacing: 0) {
             Button {
@@ -229,9 +232,24 @@ struct StepperField: View {
             .buttonStyle(.plain)
             .disabled(value <= range.lowerBound)
 
-            Text(label(value))
+            TextField("", text: $text)
+                .textFieldStyle(.plain)
+                .multilineTextAlignment(.center)
                 .font(.system(size: 12, design: .monospaced))
-                .frame(minWidth: 44, alignment: .center)
+                .frame(minWidth: 44)
+                .focused($isFocused)
+                .onSubmit { commit() }
+                .onChange(of: isFocused) { _, focused in
+                    if focused {
+                        // 聚焦时显示纯数字，便于直接输入
+                        text = String(format: "%g", value)
+                    } else {
+                        commit()
+                    }
+                }
+                .onChange(of: value) { _, newValue in
+                    if !isFocused { text = label(newValue) }
+                }
 
             Button {
                 value = min(range.upperBound, value + step)
@@ -248,6 +266,24 @@ struct StepperField: View {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .stroke(Color(white: 1, opacity: 0.22), lineWidth: 1)
         )
+        .onAppear { text = label(value) }
+    }
+
+    private func commit() {
+        if let parsed = parseNumber(text) {
+            value = min(max(parsed, range.lowerBound), range.upperBound)
+        }
+        text = label(value)
+    }
+
+    /// 从用户输入中提取数字（支持 "1.5"、"1,5"、"15pt"、"20%" 等）。
+    private func parseNumber(_ input: String) -> Double? {
+        let normalized = input.replacingOccurrences(of: ",", with: ".")
+        guard let match = normalized.range(
+            of: #"-?\d+(\.\d+)?"#,
+            options: .regularExpression
+        ) else { return nil }
+        return Double(normalized[match])
     }
 }
 

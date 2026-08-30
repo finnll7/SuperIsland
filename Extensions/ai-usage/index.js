@@ -39,13 +39,13 @@ function sourceLabel(source) {
     case "oauth-api":
       return "OAuth API";
     case "local-summary":
-      return "Local summary";
+      return "本地摘要";
     case "auth-token":
-      return "Auth token";
+      return "认证令牌";
     case "stats-cache":
-      return "Stats cache";
+      return "统计缓存";
     case "unavailable":
-      return "Unavailable";
+      return "不可用";
     default:
       return null;
   }
@@ -123,7 +123,7 @@ function codexModel(usage) {
       color: "gray",
       weeklyRemaining: null,
       sessionRemaining: null,
-      detail: withSource("Not available", source)
+      detail: withSource("不可用", source)
     };
   }
 
@@ -136,7 +136,7 @@ function codexModel(usage) {
       color: "green",
       weeklyRemaining: 100,
       sessionRemaining: 100,
-      detail: withSource("Unlimited", source)
+      detail: withSource("无限", source)
     };
   }
 
@@ -153,7 +153,7 @@ function codexModel(usage) {
       color: "gray",
       weeklyRemaining: usageStats.weeklyRemaining,
       sessionRemaining: usageStats.sessionRemaining,
-      detail: withSource("No window data", source)
+      detail: withSource("无窗口数据", source)
     };
   }
 
@@ -165,7 +165,7 @@ function codexModel(usage) {
     color: colorForRemaining(remaining),
     weeklyRemaining: usageStats.weeklyRemaining,
     sessionRemaining: usageStats.sessionRemaining,
-    detail: withSource(window && window.windowLabel ? window.windowLabel : "Usage window", source)
+    detail: withSource(window && window.windowLabel ? window.windowLabel : "用量窗口", source)
   };
 }
 
@@ -181,7 +181,7 @@ function claudeModel(usage) {
       color: "gray",
       weeklyRemaining: null,
       sessionRemaining: null,
-      detail: withSource("Not available", source)
+      detail: withSource("不可用", source)
     };
   }
 
@@ -197,15 +197,15 @@ function claudeModel(usage) {
 
   if (explicitRemaining !== null) {
     remaining = clamp(explicitRemaining, 0, 100);
-    detail = statusLabel || "Usage data";
+    detail = statusLabel || "用量数据";
   } else if (status === "rejected") {
     remaining = 0;
-    detail = statusLabel || "Blocked";
+    detail = statusLabel || "已阻止";
   } else if (status === "allowed_warning") {
     const warningLooksLow = statusLabel && /(low|limit|blocked|exceeded|critical)/i.test(statusLabel);
     if (warningLooksLow) {
       remaining = 20;
-      detail = statusLabel || "Low remaining";
+      detail = statusLabel || "剩余较低";
     } else if (hoursTillReset !== null) {
       if (hoursTillReset <= 1) {
         remaining = 8;
@@ -214,10 +214,10 @@ function claudeModel(usage) {
       } else {
         remaining = 55;
       }
-      detail = statusLabel || `${Math.ceil(hoursTillReset)}h to reset`;
+      detail = statusLabel || `约 ${Math.ceil(hoursTillReset)} 小时后重置`;
     } else {
       remaining = 55;
-      detail = statusLabel || "Warning";
+      detail = statusLabel || "警告";
     }
   } else if (hoursTillReset !== null) {
     if (hoursTillReset <= 1) {
@@ -227,10 +227,10 @@ function claudeModel(usage) {
     } else {
       remaining = 65;
     }
-    detail = statusLabel || `${Math.ceil(hoursTillReset)}h to reset`;
+    detail = statusLabel || `约 ${Math.ceil(hoursTillReset)} 小时后重置`;
   } else {
     remaining = 65;
-    detail = statusLabel || "Available";
+    detail = statusLabel || "可用";
   }
 
   return {
@@ -332,21 +332,21 @@ SuperIsland.registerModule({
     const claude = claudeModel(usage);
 
     return View.vstack([
-      View.text("AI Usage", { style: "title", color: "white" }),
+      View.text("AI 用量", { style: "title", color: "white" }),
       View.hstack([
         View.vstack([
           View.circularProgress(codex.progress, { total: 1, lineWidth: 6, color: codex.color }),
           View.text("Codex", { style: "caption", color: "gray" }),
           View.text(codex.text, { style: "monospaced", color: codex.color }),
-          View.text(`Week ${percentLabel(codex.weeklyRemaining)}`, { style: "footnote", color: "gray" }),
-          View.text(`Session ${percentLabel(codex.sessionRemaining)}`, { style: "footnote", color: "gray" })
+          View.text(`本周 ${percentLabel(codex.weeklyRemaining)}`, { style: "footnote", color: "gray" }),
+          View.text(`本次会话 ${percentLabel(codex.sessionRemaining)}`, { style: "footnote", color: "gray" })
         ], { spacing: 4, align: "center" }),
         View.vstack([
           View.circularProgress(claude.progress, { total: 1, lineWidth: 6, color: claude.color }),
           View.text("Claude", { style: "caption", color: "gray" }),
           View.text(claude.text, { style: "monospaced", color: claude.color }),
-          View.text(`Week ${percentLabel(claude.weeklyRemaining)}`, { style: "footnote", color: "gray" }),
-          View.text(`Session ${percentLabel(claude.sessionRemaining)}`, { style: "footnote", color: "gray" })
+          View.text(`本周 ${percentLabel(claude.weeklyRemaining)}`, { style: "footnote", color: "gray" }),
+          View.text(`本次会话 ${percentLabel(claude.sessionRemaining)}`, { style: "footnote", color: "gray" })
         ], { spacing: 4, align: "center" })
       ], { spacing: 20, align: "center", distribution: "fillEqually" })
     ], { spacing: 10, align: "center" });

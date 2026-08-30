@@ -10,20 +10,20 @@ enum EnergyMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .normal: return "Normal"
-        case .smart: return "Smart"
-        case .lowPower: return "Low Power"
+        case .normal: return "正常"
+        case .smart: return "智能"
+        case .lowPower: return "低功耗"
         }
     }
 
     var description: String {
         switch self {
         case .normal:
-            return "Keep refresh behavior responsive."
+            return "保持刷新行为响应迅速。"
         case .smart:
-            return "Reduce background work while collapsed and restore quickly on hover."
+            return "折叠时减少后台工作，悬停时快速恢复。"
         case .lowPower:
-            return "Slow non-essential refresh and pause inactive extension work."
+            return "减慢非必要刷新并暂停不活跃的扩展工作。"
         }
     }
 }

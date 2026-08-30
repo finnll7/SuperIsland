@@ -1,63 +1,63 @@
 {
   "sections": [
     {
-      "title": "Team",
+      "title": "球队",
       "fields": [
         {
           "type": "text",
           "key": "favoriteTeam",
-          "label": "Favorite team (FIFA code, e.g. USA, BRA, ARG)",
+          "label": "关注的球队（FIFA 代码，例如 USA、BRA、ARG）",
           "placeholder": "USA",
           "default": ""
         },
         {
           "type": "toggle",
           "key": "favoriteOnlyAlerts",
-          "label": "Kickoff/full-time alerts only for my team",
+          "label": "仅为我的球队发送开球/完场提醒",
           "default": false
         }
       ]
     },
     {
-      "title": "Alerts",
+      "title": "提醒",
       "fields": [
         {
           "type": "toggle",
           "key": "notifyGoals",
-          "label": "Notify on goals",
+          "label": "进球时通知",
           "default": true
         },
         {
           "type": "toggle",
           "key": "notifyKickoff",
-          "label": "Notify at kickoff",
+          "label": "开球时通知",
           "default": true
         },
         {
           "type": "toggle",
           "key": "notifyFullTime",
-          "label": "Notify at full-time",
+          "label": "完场时通知",
           "default": true
         },
         {
           "type": "toggle",
           "key": "playSound",
-          "label": "Play notification sound",
+          "label": "播放通知提示音",
           "default": true
         }
       ]
     },
     {
-      "title": "Data",
+      "title": "数据",
       "fields": [
         {
           "type": "picker",
           "key": "livePoll",
-          "label": "Live score refresh",
+          "label": "实时比分刷新",
           "options": [
-            { "label": "Every 15 seconds", "value": "15" },
-            { "label": "Every 30 seconds", "value": "30" },
-            { "label": "Every 60 seconds", "value": "60" }
+            { "label": "每 15 秒", "value": "15" },
+            { "label": "每 30 秒", "value": "30" },
+            { "label": "每 60 秒", "value": "60" }
           ],
           "default": "30"
         }

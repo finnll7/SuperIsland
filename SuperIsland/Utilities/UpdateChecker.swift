@@ -55,7 +55,7 @@ final class UpdateChecker: ObservableObject {
                   let tagName = json["tag_name"] as? String,
                   let htmlURL = json["html_url"] as? String,
                   let releaseURL = URL(string: htmlURL) else {
-                checkState = .failed("Invalid response from GitHub.")
+                checkState = .failed("GitHub 返回无效响应。")
                 return
             }
 
@@ -72,7 +72,7 @@ final class UpdateChecker: ObservableObject {
                 checkState = .upToDate
             }
         } catch {
-            checkState = .failed("Could not reach GitHub.")
+            checkState = .failed("无法连接 GitHub。")
         }
     }
 

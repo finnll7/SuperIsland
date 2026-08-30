@@ -145,10 +145,10 @@ function switchPhase() {
   remainingSeconds = currentPhaseDuration();
   if (settingBool("notifyOnComplete", true)) {
     SuperIsland.notifications.send({
-      title: wasFocus ? "Break started" : "Break ended",
+      title: wasFocus ? "休息已开始" : "休息已结束",
       body: wasFocus
-        ? "Session " + sessionsCompleted + " complete. Break is now running."
-        : "Break ended. Start your next focus session when ready.",
+        ? "第 " + sessionsCompleted + " 个会话已完成，休息正在进行。"
+        : "休息已结束，准备好后请开始下一个专注会话。",
       sound: settingBool("playSound", true)
     });
   }
@@ -216,9 +216,9 @@ function avatarAnim() {
 }
 
 function statusLabel() {
-  if (phase === PHASE_BREAK) return isRunning ? "Chilling" : "Resting";
-  if (isRunning) return remainingSeconds <= 60 ? "Wrapping up!" : "Deep work";
-  return "Ready to focus";
+  if (phase === PHASE_BREAK) return isRunning ? "放松中" : "休息中";
+  if (isRunning) return remainingSeconds <= 60 ? "即将完成！" : "深度专注";
+  return "准备专注";
 }
 
 // Accent color per state
@@ -360,9 +360,9 @@ SuperIsland.registerModule({
     return View.hstack([
       View.mascot({ size: 50 }),
       View.vstack([
-        View.text(phase === PHASE_FOCUS ? "Focus" : "Break", { style: "title", color: "white" }),
+        View.text(phase === PHASE_FOCUS ? "专注" : "休息", { style: "title", color: "white" }),
         View.text(formatTime(remainingSeconds), { style: "monospaced", color: "white" }),
-        View.text(sessionsCompleted + " sessions today", { style: "footnote", color: "gray" })
+        View.text("今日已完成 " + sessionsCompleted + " 个会话", { style: "footnote", color: "gray" })
       ], { spacing: 3, align: "leading" }),
       View.spacer(),
       View.button(View.icon(isRunning ? "pause.fill" : "play.fill", { size: 16, color: "white" }), "toggle")
@@ -394,9 +394,9 @@ SuperIsland.registerModule({
       // Progress
       View.progress(ratio, { total: 1, color: a }),
       View.hstack([
-        View.text(phase === PHASE_FOCUS ? "Focus" : "Break", { style: "footnote", color: { r: 1, g: 1, b: 1, a: 0.35 } }),
+        View.text(phase === PHASE_FOCUS ? "专注" : "休息", { style: "footnote", color: { r: 1, g: 1, b: 1, a: 0.35 } }),
         View.spacer(),
-        View.text(minsLeft + "m left", { style: "footnote", color: { r: 1, g: 1, b: 1, a: 0.35 } })
+        View.text("剩余 " + minsLeft + " 分钟", { style: "footnote", color: { r: 1, g: 1, b: 1, a: 0.35 } })
       ], { spacing: 4, align: "center" }),
 
       // Controls + sessions

@@ -1,12 +1,13 @@
 "use strict";
 
 // --- Config --------------------------------------------------------------
-var EXT_VERSION = "1.6.0";
+var EXT_VERSION = "1.7.0";
 var PORT = 7823;
 var BASE = "http://127.0.0.1:" + PORT;
 var POLL_INTERVAL_MS = 800;
 var SETTING_HOOKS_CC = "hooksClaudeCode";
 var SETTING_HOOKS_CODEX = "hooksCodex";
+var SETTING_HOOKS_PANDA = "hooksPanda";
 var SETTING_SOUND_ALERT = "soundAlert";
 var SETTING_SOUND_PACK = "soundPack";
 var DEFAULT_SOUND_PACK = "8bit";
@@ -36,6 +37,7 @@ var currentState = "Idle";   // derived from top session (for compact view)
 var bridgeOnline = false;
 var hooksCC = false;
 var hooksCodex = false;
+var hooksPanda = false;
 var activationFailed = false;
 var offlineWarningSent = false;
 var inFlight = false;
@@ -173,20 +175,21 @@ function stateAccent(s, online) {
 function stateDescription(s, online) {
   if (!online) {
     return activationFailed
-      ? "Bridge unreachable · run server/install.sh"
-      : "Bridge offline · awaiting connection";
+      ? "桥接不可达 · 请运行 server/install.sh"
+      : "桥接离线 · 等待连接";
   }
-  if (s === "Working") return "Executing task";
-  if (s === "Waiting") return "Awaiting your input";
-  if (s === "Idle")    return "Standby — ready for next prompt";
-  if (s === "Error")   return "Last tool call failed";
-  if (s === "Done")    return "Just finished";
+  if (s === "Working") return "正在执行任务";
+  if (s === "Waiting") return "等待您的输入";
+  if (s === "Idle")    return "待机 — 准备接收下一条指令";
+  if (s === "Error")   return "上次工具调用失败";
+  if (s === "Done")    return "刚刚完成";
   return "";
 }
 
-// "Claude" / "Codex" tone in the pill.
+// "Claude" / "Codex" / "Panda" tone in the pill.
 function agentAccent(agent) {
   if (agent === "Codex") return { r: 0.40, g: 0.80, b: 0.55, a: 1 };
+  if (agent === "Panda") return { r: 0.30, g: 0.68, b: 0.96, a: 1 }; // Panda (blue)
   return { r: 0.92, g: 0.55, b: 0.35, a: 1 }; // Claude (warm)
 }
 
@@ -203,7 +206,7 @@ function cwdShort(cwd) {
 function titleFor(s) {
   if (s.title) return s.title;
   var c = cwdShort(s.cwd);
-  return c ? c : "(no title)";
+  return c ? c : "(无标题)";
 }
 
 function displayTitleFor(s) {
@@ -214,11 +217,11 @@ function displayTitleFor(s) {
 function relativeTime(updatedAt) {
   if (!updatedAt) return "";
   var diff = Math.max(0, Date.now() / 1000 - updatedAt);
-  if (diff < 45) return "now";
-  if (diff < 90) return "1m";
-  if (diff < 3600) return Math.round(diff / 60) + "m";
-  if (diff < 3600 * 36) return Math.round(diff / 3600) + "h";
-  return Math.round(diff / 86400) + "d";
+  if (diff < 45) return "刚刚";
+  if (diff < 90) return "1 分钟前";
+  if (diff < 3600) return Math.round(diff / 60) + " 分钟前";
+  if (diff < 3600 * 36) return Math.round(diff / 3600) + " 小时前";
+  return Math.round(diff / 86400) + " 天前";
 }
 
 // Working-session count for the tight minimal-trailing slot. Shows the number
@@ -302,7 +305,7 @@ function questionCard(s, pixelSize) {
 
   var topLine = [];
   topLine.push(pixelBox("Waiting", true, pixelSize));
-  var headerText = p.header || "Question";
+  var headerText = p.header || "问题";
   var labelChipChildren = [chip((s.agent || "Claude"), agentAccent(s.agent || "Claude"))];
   if (s.terminal) labelChipChildren.push(chip(s.terminal, WHITE_65));
   var titleStack = View.vstack([
@@ -324,7 +327,7 @@ function questionCard(s, pixelSize) {
   var buttons = [];
   for (var i = 0; i < options.length; i++) {
     var opt = options[i] || {};
-    var label = opt.label || opt.value || ("Option " + (i + 1));
+    var label = opt.label || opt.value || ("选项 " + (i + 1));
     var button = View.button(
       View.cornerRadius(
         View.background(
@@ -661,6 +664,7 @@ function reconcileHooks(agent, want) {
       if (ok) {
         if (agent === "claude") hooksCC = !!want;
         else if (agent === "codex") hooksCodex = !!want;
+        else if (agent === "panda") hooksPanda = !!want;
         dlog(agent + " hooks " + (want ? "installed" : "uninstalled"));
         return;
       }
@@ -671,7 +675,7 @@ function reconcileHooks(agent, want) {
       // reaches the user from JS without them opening the expanded view.
       try {
         SuperIsland.notifications.send({
-          title: (agent === "codex" ? "Codex" : "Claude") + " hooks failed",
+          title: (agent === "codex" ? "Codex" : agent === "panda" ? "Panda" : "Claude") + " 钩子安装失败",
           body: err,
           id: "agents-status-hooks-error-" + agent,
           systemNotification: true
@@ -682,7 +686,7 @@ function reconcileHooks(agent, want) {
       dlog(agent + " hooks reconcile threw: " + e);
       try {
         SuperIsland.notifications.send({
-          title: (agent === "codex" ? "Codex" : "Claude") + " hooks bridge error",
+          title: (agent === "codex" ? "Codex" : agent === "panda" ? "Panda" : "Claude") + " 钩子桥接错误",
           body: String(e),
           id: "agents-status-hooks-error-" + agent,
           systemNotification: true
@@ -694,6 +698,7 @@ function reconcileHooks(agent, want) {
 function applyAllHooks() {
   reconcileHooks("claude", settingBool(SETTING_HOOKS_CC, true));
   reconcileHooks("codex",  settingBool(SETTING_HOOKS_CODEX, true));
+  reconcileHooks("panda",  settingBool(SETTING_HOOKS_PANDA, true));
 }
 
 function startPolling() {
@@ -725,8 +730,8 @@ SuperIsland.registerModule({
         bridgeOnline = false;
         dlog("ACTIVATION FAILED: bridge unreachable — run Extensions/agents-status/server/install.sh");
         notifyFailure(
-          "Agents Status: bridge unreachable",
-          "Disable the extension and run server/install.sh once, then re-enable."
+          "代理状态：桥接不可达",
+          "请先停用扩展并运行一次 server/install.sh，然后重新启用。"
         );
       }
       startPolling();
@@ -745,6 +750,7 @@ SuperIsland.registerModule({
     dlog("setting " + key + " -> " + value);
     if (key === SETTING_HOOKS_CC)    reconcileHooks("claude", !!value);
     else if (key === SETTING_HOOKS_CODEX) reconcileHooks("codex",  !!value);
+    else if (key === SETTING_HOOKS_PANDA) reconcileHooks("panda",  !!value);
     else if (key === SETTING_SOUND_ALERT && !!value) {
       // Audition all three events so the user hears the full pack.
       playSoundTone("start");
@@ -794,7 +800,7 @@ SuperIsland.registerModule({
     },
     trailing: function () {
       if (!bridgeOnline) {
-        return View.text(activationFailed ? "setup" : "—", { style: "monospacedSmall", color: stateAccent(currentState, false) });
+        return View.text(activationFailed ? "设置" : "—", { style: "monospacedSmall", color: stateAccent(currentState, false) });
       }
       return workingCountView();
     },
@@ -811,7 +817,7 @@ SuperIsland.registerModule({
   // -- compact (non-notched) --
   compact: function () {
     if (!bridgeOnline) {
-      var off = activationFailed ? "setup" : "offline";
+      var off = activationFailed ? "设置" : "离线";
       return View.hstack([
         pixelBox(currentState, false, 26),
         View.text(off, { style: "caption", color: stateAccent(currentState, false) })
@@ -820,16 +826,16 @@ SuperIsland.registerModule({
     var counts = countsByEffectiveState();
     var label, labelColor;
     if (counts.Working > 0) {
-      label = counts.Working + " working";
+      label = counts.Working + " 个进行中";
       labelColor = COLORS.Working;
     } else if (counts.Done > 0) {
-      label = counts.Done + " done";
+      label = counts.Done + " 个已完成";
       labelColor = COLORS.Done;
     } else if (sessions.length > 0) {
-      label = sessions.length === 1 ? "Idle" : (sessions.length + " idle");
+      label = sessions.length === 1 ? "空闲" : (sessions.length + " 个空闲");
       labelColor = stateAccent(currentState, true);
     } else {
-      label = "No sessions";
+      label = "无会话";
       labelColor = WHITE_50;
     }
     return View.hstack([
@@ -855,7 +861,7 @@ SuperIsland.registerModule({
       rows.push(sessionRow(sessions[i], 22, false, isSessionFocusable(sessions[i])));
     }
     if (sessions.length > 2) {
-      rows.push(View.text("+" + (sessions.length - 2) + " more", {
+      rows.push(View.text("+" + (sessions.length - 2) + " 更多", {
         style: "footnote", color: WHITE_40
       }));
     }
@@ -892,15 +898,15 @@ SuperIsland.registerModule({
 function heroView() {
   var accent = stateAccent(currentState, bridgeOnline);
   var headline = bridgeOnline
-    ? "No active sessions"
-    : (activationFailed ? "Setup required" : "Offline");
+    ? "暂无进行中的会话"
+    : (activationFailed ? "需要设置" : "离线");
   var sub = bridgeOnline
-    ? "Start Claude Code or Codex to see it here"
+    ? "启动 Claude Code 或 Codex 即可在此查看"
     : stateDescription(currentState, false);
   return View.hstack([
     pixelBox(currentState, bridgeOnline, 48),
     View.vstack([
-      View.text("Agents Status", { style: "headline", color: "white" }),
+      View.text("代理状态", { style: "headline", color: "white" }),
       View.text(headline, { style: "caption", color: accent }),
       View.text(sub, { style: "footnote", color: WHITE_50, lineLimit: 2 })
     ], { spacing: 3, align: "leading" }),

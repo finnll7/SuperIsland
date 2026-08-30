@@ -57,13 +57,13 @@ final class TeleprompterSpeechRecognizer: ObservableObject {
         guard !sourceText.isEmpty else { return }
 
         guard PermissionsManager.shared.checkMicrophone() else {
-            error = "Microphone access is required for Word Tracking."
+            error = "使用逐词跟踪需要麦克风权限。"
             PermissionsManager.shared.requestTeleprompterWordTrackingAccess()
             return
         }
 
         guard PermissionsManager.shared.checkSpeechRecognition() else {
-            error = "Speech Recognition access is required for Word Tracking."
+            error = "使用逐词跟踪需要语音识别权限。"
             PermissionsManager.shared.requestTeleprompterWordTrackingAccess()
             return
         }
@@ -97,7 +97,7 @@ final class TeleprompterSpeechRecognizer: ObservableObject {
 
         speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: localeIdentifier))
         guard let speechRecognizer, speechRecognizer.isAvailable else {
-            error = "Speech recognizer is not available for the selected language."
+            error = "所选语言不可用语音识别服务。"
             isListening = false
             return
         }
@@ -152,7 +152,7 @@ final class TeleprompterSpeechRecognizer: ObservableObject {
                         self.retryCount += 1
                         self.scheduleRestart(localeIdentifier: localeIdentifier, after: min(Double(self.retryCount) * 0.4, 1.5))
                     } else {
-                        self.error = "Speech recognition stopped unexpectedly."
+                        self.error = "语音识别意外停止。"
                         self.isListening = false
                     }
                 }
@@ -165,7 +165,7 @@ final class TeleprompterSpeechRecognizer: ObservableObject {
             isListening = true
             startPreemptiveRestart(localeIdentifier: localeIdentifier)
         } catch {
-            self.error = "Audio engine failed: \(error.localizedDescription)"
+            self.error = "音频引擎失败：\(error.localizedDescription)"
             isListening = false
         }
     }

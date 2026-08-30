@@ -90,7 +90,7 @@ mutation SuperIslandLinearReply($input: CommentCreateInput!) {
 
 let state = {
   status: "needsAuth",
-  statusText: "Connect Linear to start watching mentions.",
+  statusText: "连接 Linear 以开始关注提及。",
   error: "",
   connected: false,
   mentions: [],
@@ -152,12 +152,12 @@ function parseTimestamp(value) {
 }
 
 function timeAgoLabel(timestamp) {
-  if (!timestamp) return "now";
+  if (!timestamp) return "刚刚";
   const diff = Math.max(0, Math.floor(Date.now() / 1000) - timestamp);
-  if (diff < 60) return "just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 60) return "刚刚";
+  if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
+  return `${Math.floor(diff / 86400)} 天前`;
 }
 
 function settingBoolean(key, fallback) {
@@ -180,10 +180,10 @@ function pollIntervalMs() {
 
 function pollIntervalLabel() {
   const seconds = pollIntervalSeconds();
-  if (seconds < 60) return `Every ${seconds}s`;
+  if (seconds < 60) return `每 ${seconds} 秒`;
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `Every ${minutes}m`;
-  return `Every ${Math.round(minutes / 60)}h`;
+  if (minutes < 60) return `每 ${minutes} 分钟`;
+  return `每 ${Math.round(minutes / 60)} 小时`;
 }
 
 function readOAuthSession() {
@@ -253,9 +253,9 @@ function writeStringArray(key, values, limit) {
 }
 
 function mentionTypeLabel(type) {
-  if (type === "issueCommentMention") return "Comment mention";
-  if (type === "issueMention") return "Issue mention";
-  return "Mention";
+  if (type === "issueCommentMention") return "评论提及";
+  if (type === "issueMention") return "问题提及";
+  return "提及";
 }
 
 function mentionHeadline(mention) {
@@ -264,7 +264,7 @@ function mentionHeadline(mention) {
   if (identifier && title && identifier !== title) {
     return `${identifier} - ${title}`;
   }
-  return identifier || title || "Linear issue";
+  return identifier || title || "Linear 问题";
 }
 
 function latestMention() {
@@ -288,7 +288,7 @@ function buildMentionFromNotification(node) {
   const actor = asObject(row.actor);
 
   const issueIdentifier = normalizeText(issue && issue.identifier);
-  const issueTitle = normalizeText(issue && issue.title) || issueIdentifier || "Untitled issue";
+  const issueTitle = normalizeText(issue && issue.title) || issueIdentifier || "无标题问题";
   const issueDescription = cleanMarkdown(issue && issue.description);
   const issueURL = normalizeText(issue && issue.url);
   const commentId = normalizeText(row.commentId) || normalizeText(comment && comment.id);
@@ -308,7 +308,7 @@ function buildMentionFromNotification(node) {
     commentBody ||
     parentCommentBody ||
     issueDescription ||
-    `${mentionTypeLabel(type)} in ${issueIdentifier || "a Linear issue"}`;
+    `在 ${issueIdentifier || "某个 Linear 问题"} 中${mentionTypeLabel(type)}`;
   const createdAt = parseTimestamp(row.createdAt || row.updatedAt);
 
   return {
@@ -353,7 +353,7 @@ function resetBaselineForToken(signature) {
 async function graphqlRequest(query, variables) {
   const oauth = oauthSessionState();
   if (!oauth.connected || !oauth.session) {
-    return { ok: false, error: oauth.expired ? "Linear login expired." : "Missing Linear login." };
+    return { ok: false, error: oauth.expired ? "Linear 登录已过期。" : "缺少 Linear 登录信息。" };
   }
 
   const response = await SuperIsland.http.fetch(LINEAR_API_URL, {
@@ -367,7 +367,7 @@ async function graphqlRequest(query, variables) {
   });
 
   if (response && response.error) {
-    return { ok: false, error: normalizeText(response.error) || "Network error." };
+    return { ok: false, error: normalizeText(response.error) || "网络错误。" };
   }
 
   const payload = asObject(response && response.data);
@@ -375,7 +375,7 @@ async function graphqlRequest(query, variables) {
     const text = normalizeText(response && response.text);
     return {
       ok: false,
-      error: text || `Unexpected response from Linear (${Number(response && response.status) || 0}).`
+      error: text || `来自 Linear 的意外响应（${Number(response && response.status) || 0}）。`
     };
   }
 
@@ -388,7 +388,7 @@ async function graphqlRequest(query, variables) {
 
   const status = Number(response && response.status) || 0;
   if (status < 200 || status >= 300) {
-    return { ok: false, error: `Linear API returned HTTP ${status}.` };
+    return { ok: false, error: `Linear API 返回 HTTP ${status}。` };
   }
 
   return { ok: true, data: asObject(payload.data) || {} };
@@ -416,8 +416,8 @@ function sendMentionNotification(mention) {
   SuperIsland.notifications.send({
     id: mention.notificationSourceID,
     appName: LINEAR_APP_NAME,
-    title: mention.issueIdentifier || mention.issueTitle || "New Linear mention",
-    body: mention.issueTitle || "You were mentioned in Linear",
+    title: mention.issueIdentifier || mention.issueTitle || "新的 Linear 提及",
+    body: mention.issueTitle || "您在 Linear 中被提及",
     senderName: mention.actorName,
     previewText: truncate(mention.preview, PREVIEW_LIMIT_NOTIFICATION),
     avatarURL: mention.actorAvatarURL || undefined,
@@ -455,7 +455,7 @@ async function pollMentions(force) {
     console.log("[linear] poll aborted: no oauth session (expired=" + oauth.expired + ")");
     state = {
       status: "needsAuth",
-      statusText: oauth.expired ? "Linear login expired. Connect again." : "Connect Linear to start watching mentions.",
+      statusText: oauth.expired ? "Linear 登录已过期，请重新连接。" : "连接 Linear 以开始关注提及。",
       error: "",
       connected: false,
       mentions: [],
@@ -474,8 +474,8 @@ async function pollMentions(force) {
       console.error("[linear] poll error: " + (response.error || "unknown"));
       state = {
         status: "error",
-        statusText: "Linear sync failed",
-        error: response.error || "Unable to load mentions.",
+        statusText: "Linear 同步失败",
+        error: response.error || "无法加载提及。",
         connected: false,
         mentions: state.mentions,
         lastSyncAt: state.lastSyncAt
@@ -525,7 +525,7 @@ async function pollMentions(force) {
 
     state = {
       status: "ready",
-      statusText: mentions.length > 0 ? "Watching Linear mentions" : "No recent mentions",
+      statusText: mentions.length > 0 ? "正在关注 Linear 提及" : "暂无近期提及",
       error: "",
       connected: true,
       mentions,
@@ -580,7 +580,7 @@ function openReplyComposer(payload) {
     type: normalizeText(data.type),
     issueId,
     issueIdentifier: normalizeText(data.issueIdentifier),
-    issueTitle: normalizeText(data.issueTitle) || "Linear issue",
+    issueTitle: normalizeText(data.issueTitle) || "Linear 问题",
     issueURL: normalizeText(data.issueURL),
     commentId: normalizeText(data.commentId),
     commentURL: normalizeText(data.commentURL),
@@ -611,14 +611,14 @@ async function submitReply(body) {
 
   const response = await graphqlRequest(CREATE_COMMENT_MUTATION, { input });
   if (!response.ok) {
-    replyComposer.error = response.error || "Failed to send reply.";
+    replyComposer.error = response.error || "发送回复失败。";
     SuperIsland.playFeedback("error");
     return;
   }
 
   const payload = asObject(response.data.commentCreate);
   if (!payload || payload.success !== true) {
-    replyComposer.error = "Linear did not accept the reply.";
+    replyComposer.error = "Linear 未接受该回复。";
     SuperIsland.playFeedback("error");
     return;
   }
@@ -639,7 +639,7 @@ async function submitReply(body) {
 
 function statusFooterText() {
   if (state.error) return state.error;
-  if (state.lastSyncAt) return `Last sync ${timeAgoLabel(state.lastSyncAt)}`;
+  if (state.lastSyncAt) return `上次同步 ${timeAgoLabel(state.lastSyncAt)}`;
   return state.statusText;
 }
 
@@ -710,14 +710,14 @@ function replyComposerView() {
   if (replyComposer.issueURL || replyComposer.commentURL) {
     controls.push(
       View.button(
-        View.text("Open in Linear", { style: "caption", color: "blue", lineLimit: 1 }),
+        View.text("在 Linear 中打开", { style: "caption", color: "blue", lineLimit: 1 }),
         "open-in-linear"
       )
     );
   }
   controls.push(
     View.button(
-      View.text("Close", { style: "caption", color: "gray", lineLimit: 1 }),
+      View.text("关闭", { style: "caption", color: "gray", lineLimit: 1 }),
       "close-reply"
     )
   );
@@ -730,7 +730,7 @@ function replyComposerView() {
     ], { spacing: 8, align: "top" }),
     View.text(
       truncate(
-        replyComposer.preview || `${mentionTypeLabel(replyComposer.type)} in ${replyComposer.issueTitle}`,
+        replyComposer.preview || `在 ${replyComposer.issueTitle} 中${mentionTypeLabel(replyComposer.type)}`,
         PREVIEW_LIMIT_EXPANDED * 2
       ),
       {
@@ -742,7 +742,7 @@ function replyComposerView() {
     issueHeadlineBadge(mentionHeadline(replyComposer)),
     View.spacer(),
     renderInputComposer({
-      placeholder: `Reply in ${replyComposer.issueIdentifier || "Linear"}`,
+      placeholder: `在 ${replyComposer.issueIdentifier || "Linear"} 中回复`,
       text: "",
       action: "submit-reply",
       id: replyComposer.commentId || replyComposer.issueId,
@@ -763,7 +763,7 @@ function compactView() {
   if (replyComposer) {
     return View.hstack([
       View.icon("arrowshape.turn.up.left.fill", { size: 12, color: "blue" }),
-      View.text(`Replying in ${replyComposer.issueIdentifier || "Linear"}`, {
+      View.text(`正在 ${replyComposer.issueIdentifier || "Linear"} 中回复`, {
         style: "caption",
         color: "white",
         lineLimit: 1
@@ -785,14 +785,14 @@ function compactView() {
   if (!oauth.connected) {
     return View.hstack([
       View.icon("link.badge.plus", { size: 12, color: "gray" }),
-      View.text(oauth.expired ? "Linear login expired" : "Connect Linear", { style: "caption", color: "gray", lineLimit: 1 })
+      View.text(oauth.expired ? "Linear 登录已过期" : "连接 Linear", { style: "caption", color: "gray", lineLimit: 1 })
     ], { spacing: 6, align: "center" });
   }
 
   if (!mention) {
     return View.hstack([
       View.icon("at", { size: 12, color: "blue" }),
-      View.text(state.connected ? "Watching mentions" : state.statusText, {
+      View.text(state.connected ? "正在关注提及" : state.statusText, {
         style: "caption",
         color: state.connected ? "white" : "gray",
         lineLimit: 1
@@ -818,8 +818,8 @@ function expandedView() {
 
   if (replyComposer) {
     return View.vstack([
-      View.text(`Replying in ${replyComposer.issueIdentifier || "Linear"}`, { style: "title", lineLimit: 1 }),
-      View.text("Opened from notification. Expand to send your reply.", {
+      View.text(`正在 ${replyComposer.issueIdentifier || "Linear"} 中回复`, { style: "title", lineLimit: 1 }),
+      View.text("从通知打开。展开以发送您的回复。", {
         style: "caption",
         color: "gray",
         lineLimit: 2
@@ -829,8 +829,8 @@ function expandedView() {
 
   if (!oauth.connected) {
     return View.vstack([
-      View.text("Linear Mentions", { style: "title", lineLimit: 1 }),
-      View.text(oauth.expired ? "Your Linear login expired. Reconnect to continue." : "Connect Linear to start watching mentions.", {
+      View.text("Linear 提及", { style: "title", lineLimit: 1 }),
+      View.text(oauth.expired ? "您的 Linear 登录已过期，请重新连接以继续。" : "连接 Linear 以开始关注提及。", {
         style: "caption",
         color: "gray",
         lineLimit: 2
@@ -840,7 +840,7 @@ function expandedView() {
 
   const rows = state.mentions.slice(0, 2).map((mention) => mentionRow(mention, false));
   return View.vstack([
-    View.text("Linear Mentions", { style: "title", lineLimit: 1 }),
+    View.text("Linear 提及", { style: "title", lineLimit: 1 }),
     View.text(statusFooterText(), {
       style: "caption",
       color: state.error ? "red" : "gray",
@@ -860,7 +860,7 @@ function fullExpandedView() {
   if (!oauth.connected) {
     const buttons = [
       View.button(
-        View.text(oauth.expired ? "Reconnect Linear" : "Login with Linear", {
+        View.text(oauth.expired ? "重新连接 Linear" : "使用 Linear 登录", {
           style: "caption",
           color: "blue",
           lineLimit: 1
@@ -872,15 +872,15 @@ function fullExpandedView() {
     if (oauth.session) {
       buttons.push(
         View.button(
-          View.text("Disconnect", { style: "caption", color: "gray", lineLimit: 1 }),
+          View.text("断开连接", { style: "caption", color: "gray", lineLimit: 1 }),
           "disconnect-linear"
         )
       );
     }
 
     return View.vstack([
-      View.text("Linear Mentions", { style: "title", lineLimit: 1 }),
-      View.text(oauth.expired ? "Your saved Linear session expired. Start OAuth again." : "Authorize Linear to receive mentions in Super Island.", {
+      View.text("Linear 提及", { style: "title", lineLimit: 1 }),
+      View.text(oauth.expired ? "您保存的 Linear 会话已过期，请重新开始 OAuth 授权。" : "授权 Linear 以在 Super Island 中接收提及。", {
         style: "caption",
         color: "gray",
         lineLimit: 2
@@ -892,7 +892,7 @@ function fullExpandedView() {
   const rows = state.mentions.length > 0
     ? state.mentions.slice(0, 4).map((mention) => mentionRow(mention, true))
     : [
-        View.text("No recent mentions.", {
+        View.text("暂无近期提及。", {
           style: "caption",
           color: "gray",
           lineLimit: 1
@@ -901,15 +901,15 @@ function fullExpandedView() {
 
   return View.vstack([
     View.hstack([
-      View.text("Linear Mentions", { style: "title", lineLimit: 1 }),
+      View.text("Linear 提及", { style: "title", lineLimit: 1 }),
       View.spacer(),
       View.text(pollIntervalLabel(), { style: "footnote", color: "gray", lineLimit: 1 }),
       View.button(
-        View.text("Refresh", { style: "caption", color: "blue", lineLimit: 1 }),
+        View.text("刷新", { style: "caption", color: "blue", lineLimit: 1 }),
         "refresh-now"
       ),
       View.button(
-        View.text("Resync (notify all)", { style: "caption", color: "orange", lineLimit: 1 }),
+        View.text("重新同步（全部通知）", { style: "caption", color: "orange", lineLimit: 1 }),
         "resync-notify-all"
       )
     ], { spacing: 8, align: "center" }),
@@ -985,7 +985,7 @@ SuperIsland.registerModule({
       closeReplyComposer();
       state = {
         status: "needsAuth",
-        statusText: "Connect Linear to start watching mentions.",
+        statusText: "连接 Linear 以开始关注提及。",
         error: "",
         connected: false,
         mentions: [],

@@ -166,8 +166,8 @@ function operationReady(operationName, force) {
 
 function formatRetryDelay(ms) {
   var totalSeconds = Math.max(1, Math.ceil(toNumber(ms, 0) / 1000));
-  if (totalSeconds < 60) return totalSeconds + "s";
-  return Math.ceil(totalSeconds / 60) + "m";
+  if (totalSeconds < 60) return totalSeconds + " 秒";
+  return Math.ceil(totalSeconds / 60) + " 分钟";
 }
 
 function safeLastErrorMessage(payload, fallbackMessage) {
@@ -178,7 +178,7 @@ function safeLastErrorMessage(payload, fallbackMessage) {
     message = trimString(payload.error);
   }
   if (!message) {
-    message = trimString(fallbackMessage) || "Unknown Last.fm error.";
+    message = trimString(fallbackMessage) || "未知的 Last.fm 错误。";
   }
 
   return {
@@ -479,10 +479,10 @@ function playbackTimelineLabel(session) {
 }
 
 function scrobbleCheckpointLabel(session, summary) {
-  if (!session) return "Scrobble at --:--";
-  if (!isFinite(session.thresholdSeconds)) return "Too short to scrobble";
-  if (summary.tone === "success") return "Sent at " + formatClock(session.scrobbledAtSeconds || session.thresholdSeconds);
-  return "Scrobble at " + formatClock(session.thresholdSeconds);
+  if (!session) return "记录点 --:--";
+  if (!isFinite(session.thresholdSeconds)) return "过短，无法记录";
+  if (summary.tone === "success") return "已于 " + formatClock(session.scrobbledAtSeconds || session.thresholdSeconds) + " 记录";
+  return "将于 " + formatClock(session.thresholdSeconds) + " 记录";
 }
 
 function currentArtworkURL() {
@@ -551,10 +551,18 @@ function statusPill(label, tone, options) {
   );
 }
 
+function statusLabelText(label) {
+  if (label === "Idle") return "空闲";
+  if (label === "Scrobbled") return "已记录";
+  if (label === "Too short") return "过短";
+  if (label === "Queued") return "排队中";
+  if (label === "Paused") return "已暂停";
+  if (label === "Tracking") return "跟踪中";
+  return label;
+}
+
 function lastFmStatusPill(summary) {
-  var label = summary.label;
-  if (label === "Scrobbled") label = "Sent";
-  if (label === "Tracking") label = "Tracking";
+  var label = statusLabelText(summary.label);
   return statusPill(label, summary.tone, {
     leadingNode: lastFmBadgeNode(10, summary.tone),
     padding: 8
@@ -614,10 +622,8 @@ function linkedNode(node, actionID) {
 function profileStatusButton(summary, session) {
   if (!authConnected()) return lastFmStatusPill(summary);
   var label = summary.label === "Scrobbled"
-    ? "Sent • Open profile"
-    : (summary.label === "Tracking"
-      ? ("Tracking • " + summaryHeadline(summary, session))
-      : (summary.label + " • " + summaryHeadline(summary, session)));
+    ? "已记录 • 打开个人主页"
+    : (statusLabelText(summary.label) + " • " + summaryHeadline(summary, session));
 
   return View.button(
     View.cornerRadius(
@@ -647,10 +653,10 @@ function profileStatusButton(summary, session) {
 }
 
 function summaryHeadline(summary, session) {
-  if (!session) return "Waiting for playback";
-  if (summary.label === "Scrobbled") return "Sent at " + formatClock(session.scrobbledAtSeconds || session.thresholdSeconds);
-  if (summary.label === "Paused") return "Paused at " + formatClock(session.activePlaySeconds);
-  if (summary.label === "Tracking") return "Scrobbles in " + formatClock(Math.max(0, session.thresholdSeconds - session.activePlaySeconds));
+  if (!session) return "等待播放";
+  if (summary.label === "Scrobbled") return "已于 " + formatClock(session.scrobbledAtSeconds || session.thresholdSeconds) + " 记录";
+  if (summary.label === "Paused") return "已于 " + formatClock(session.activePlaySeconds) + " 暂停";
+  if (summary.label === "Tracking") return "距记录还有 " + formatClock(Math.max(0, session.thresholdSeconds - session.activePlaySeconds));
   return summary.detail;
 }
 
@@ -718,19 +724,19 @@ function scrobblerPlayerCard(size) {
 }
 
 function setupStatusCard() {
-  var cleanError = trimString(state.lastError.replace("Last.fm now playing failed:", "").replace("Failed to flush scrobble queue:", ""));
+  var cleanError = trimString(state.lastError.replace("Last.fm 正在播放更新失败：", "").replace("记录队列发送失败：", ""));
   var statusText = cleanError || trimString(state.lastResult);
   var oauth = oauthSessionState();
   var pending = state.auth.status === "pending" && !oauth.connected;
-  var title = "Connect Last.fm";
-  var subtitle = "Tap Connect to log in with Last.fm in your browser.";
+  var title = "连接 Last.fm";
+  var subtitle = "点击“连接”以在浏览器中使用 Last.fm 登录。";
 
   if (pending) {
-    title = "Approve Last.fm access";
-    subtitle = "Finish the approval in your browser. SuperIsland will connect automatically.";
+    title = "批准 Last.fm 访问权限";
+    subtitle = "请在浏览器中完成授权，SuperIsland 将自动连接。";
   } else if (oauth.expired) {
-    title = "Last.fm login expired";
-    subtitle = "Reconnect to keep scrobbling.";
+    title = "Last.fm 登录已过期";
+    subtitle = "重新连接以继续记录播放。";
   }
 
   return View.frame(
@@ -747,16 +753,16 @@ function setupStatusCard() {
         lineLimit: 2,
         multilineTextAlignment: "center"
       }),
-      chipButton(authConnected() ? "Reconnect Last.fm" : "Connect Last.fm", "auth", {
+      chipButton(authConnected() ? "重新连接 Last.fm" : "连接 Last.fm", "auth", {
         style: "caption",
         icon: "link.badge.plus",
         textColor: "white",
         fillColor: subtleRedFillColor()
       }),
       View.text(
-        "Account: " + (pending
-          ? "waiting for approval"
-          : (authConnected() ? ("connected as " + (state.auth.username || "Last.fm user")) : "not connected")),
+        "账户：" + (pending
+          ? "等待授权"
+          : (authConnected() ? ("已连接为 " + (state.auth.username || "Last.fm 用户")) : "未连接")),
         {
           style: "caption",
           color: authConnected() ? successTextColor() : secondaryTextColor(),
@@ -770,7 +776,7 @@ function setupStatusCard() {
             lineLimit: 3,
             multilineTextAlignment: "center"
           })
-        : View.text("Playback will appear here once the account is connected.", {
+        : View.text("账户连接后，播放记录将显示在此处。", {
             style: "footnote",
             color: mutedTextColor(),
             lineLimit: 2,
@@ -786,7 +792,7 @@ function trackStatusSummary(session) {
     return {
       label: "Idle",
       tone: "warning",
-      detail: "Start playback to create a scrobble session."
+      detail: "开始播放以创建记录会话。"
     };
   }
 
@@ -794,7 +800,7 @@ function trackStatusSummary(session) {
     return {
       label: "Scrobbled",
       tone: "success",
-      detail: "Scrobbled at " + formatClock(session.scrobbledAtSeconds || session.thresholdSeconds)
+      detail: "已于 " + formatClock(session.scrobbledAtSeconds || session.thresholdSeconds) + " 记录"
     };
   }
 
@@ -802,7 +808,7 @@ function trackStatusSummary(session) {
     return {
       label: "Too short",
       tone: "warning",
-      detail: "Tracks under 30 seconds are ignored by Last.fm."
+      detail: "Last.fm 会忽略时长不足 30 秒的曲目。"
     };
   }
 
@@ -810,7 +816,7 @@ function trackStatusSummary(session) {
     return {
       label: "Queued",
       tone: "warning",
-      detail: state.queue.length === 1 ? "1 scrobble waiting to send." : state.queue.length + " scrobbles waiting to send."
+      detail: state.queue.length === 1 ? "1 条记录待发送。" : state.queue.length + " 条记录待发送。"
     };
   }
 
@@ -818,14 +824,14 @@ function trackStatusSummary(session) {
     return {
       label: "Paused",
       tone: "warning",
-      detail: "Only active playback time counts toward the scrobble."
+      detail: "只有实际播放时间会计入记录。"
     };
   }
 
   return {
     label: "Tracking",
     tone: "neutral",
-    detail: "Scrobbles at " + formatClock(session.thresholdSeconds) + "."
+    detail: "将于 " + formatClock(session.thresholdSeconds) + " 记录。"
   };
 }
 
@@ -1047,7 +1053,7 @@ async function lastFmRequest(methodName, params, options) {
   if (!oauth.connected || !oauth.session) {
     return {
       error: oauth.expired ? "session_expired" : "not_authenticated",
-      message: oauth.expired ? "Last.fm login expired. Connect again." : "Connect Last.fm to scrobble."
+      message: oauth.expired ? "Last.fm 登录已过期，请重新连接。" : "连接 Last.fm 以记录播放。"
     };
   }
 
@@ -1055,7 +1061,7 @@ async function lastFmRequest(methodName, params, options) {
   if (!apiKey) {
     return {
       error: "missing_api_key",
-      message: "Last.fm API key missing from session. Reconnect Last.fm."
+      message: "会话中缺少 Last.fm API 密钥，请重新连接 Last.fm。"
     };
   }
 
@@ -1064,7 +1070,7 @@ async function lastFmRequest(methodName, params, options) {
   if (signed && !apiSecret) {
     return {
       error: "missing_api_secret",
-      message: "Last.fm signing secret missing from session. Reconnect Last.fm."
+      message: "会话中缺少 Last.fm 签名密钥，请重新连接 Last.fm。"
     };
   }
 
@@ -1116,7 +1122,7 @@ async function lastFmRequest(methodName, params, options) {
       logWarning("Last.fm " + methodName + " HTTP " + status + " response: " + JSON.stringify(parsed));
       return {
         error: "http_" + status,
-        message: trimString(parsed && (parsed.message || parsed.error)) || "Last.fm API returned HTTP " + status + ".",
+        message: trimString(parsed && (parsed.message || parsed.error)) || "Last.fm API 返回 HTTP " + status + "。",
         httpStatus: status
       };
     }
@@ -1124,7 +1130,7 @@ async function lastFmRequest(methodName, params, options) {
   } catch (error) {
     return {
       error: "network_unavailable",
-      message: trimString(error && error.message ? error.message : error) || "Network unavailable"
+      message: trimString(error && error.message ? error.message : error) || "网络不可用"
     };
   }
 }
@@ -1163,7 +1169,7 @@ function markError(message) {
     logWarning(state.lastError);
   }
   persistState();
-  maybeNotify("Last.fm Scrobbler", state.lastError);
+  maybeNotify("Last.fm 记录器", state.lastError);
 }
 
 function markOperationError(operationName, message) {
@@ -1172,7 +1178,7 @@ function markOperationError(operationName, message) {
     logOperationWarning(operationName, state.lastError);
   }
   persistState();
-  maybeNotify("Last.fm Scrobbler", state.lastError);
+  maybeNotify("Last.fm 记录器", state.lastError);
 }
 
 function clearError() {
@@ -1346,20 +1352,20 @@ function queueScrobble(session) {
   if (!authConnected()) {
     setResult(
       state.queue.length === 1
-        ? "1 song queued for scrobbling until Last.fm is connected."
-        : state.queue.length + " songs queued for scrobbling until Last.fm is connected."
+        ? "已排队 1 首歌曲，待连接 Last.fm 后记录。"
+        : state.queue.length + " 首歌曲已排队，待连接 Last.fm 后记录。"
     );
     return;
   }
 
-  setResult("Queued " + session.title + " for scrobbling");
+  setResult("已将 " + session.title + " 加入记录队列");
 }
 
 function startAuthFlow() {
   clearError();
   state.auth.lastAuthError = "";
   state.auth.status = "pending";
-  setResult("Approve SuperIsland in your browser to finish connecting Last.fm.");
+  setResult("请在浏览器中批准 SuperIsland，以完成 Last.fm 连接。");
   SuperIsland.openURL(LASTFM_AUTHORIZE_URL);
 }
 
@@ -1391,18 +1397,18 @@ function syncAuthFromOAuthStore() {
     if (!wasConnected) {
       clearError();
       var welcome = state.auth.username
-        ? "Connected to Last.fm as " + state.auth.username
-        : "Connected to Last.fm.";
+        ? "已以 " + state.auth.username + " 身份连接 Last.fm"
+        : "已连接 Last.fm。";
       state.lastResult = welcome;
       logInfo(welcome);
-      maybeNotify("Last.fm connected", welcome);
+      maybeNotify("Last.fm 已连接", welcome);
       persistState();
     }
     return;
   }
 
   if (oauth.expired && state.auth.status !== "disconnected") {
-    state.auth.lastAuthError = "Last.fm login expired. Connect again.";
+    state.auth.lastAuthError = "Last.fm 登录已过期，请重新连接。";
     state.auth.status = "disconnected";
     persistState();
     return;
@@ -1444,12 +1450,12 @@ async function sendNowPlayingUpdate(session) {
     state.auth.lastAuthError = "";
     clearError();
     clearOperationRetry("nowPlaying");
-    setResult("Now playing: " + session.title);
+    setResult("正在播放：" + session.title);
     return;
   }
 
   if (data && (data.message || data.error)) {
-    var nowPlayingError = safeLastErrorMessage(data, "Unable to update Last.fm now playing.");
+    var nowPlayingError = safeLastErrorMessage(data, "无法更新 Last.fm 正在播放。");
     state.auth.lastAuthError = nowPlayingError.message;
     if (nowPlayingError.code === 9) {
       clearAuthState();
@@ -1457,7 +1463,7 @@ async function sendNowPlayingUpdate(session) {
       state.auth.status = "error";
     }
     scheduleOperationRetry("nowPlaying", nowPlayingError.retryable ? backoffDelayMs(operationState("nowPlaying").failureCount + 1) : BACKOFF_MAX_MS, false);
-    markOperationError("nowPlaying", "Last.fm now playing failed: " + nowPlayingError.message);
+    markOperationError("nowPlaying", "Last.fm 正在播放更新失败：" + nowPlayingError.message);
   }
 }
 
@@ -1482,11 +1488,11 @@ function mapScrobbleStatuses(data, count) {
 
 async function flushQueue(force) {
   if (!state.queue.length) {
-    if (force) setResult("Scrobble queue is already clear.");
+    if (force) setResult("记录队列已清空。");
     return;
   }
   if (!authConnected()) {
-    if (force) setResult("Connect Last.fm before retrying queued scrobbles.");
+    if (force) setResult("请先连接 Last.fm，再重试排队的记录。");
     return;
   }
   if (!settingBool("enabled", true) && !force) return;
@@ -1494,7 +1500,7 @@ async function flushQueue(force) {
 
   var batch = state.queue.slice(0, MAX_BATCH_SIZE);
   if (force) {
-    setResult("Retrying " + batch.length + (batch.length === 1 ? " queued scrobble..." : " queued scrobbles..."));
+    setResult("正在重试 " + batch.length + " 条排队记录...");
   }
   var params = {};
   var i;
@@ -1510,11 +1516,11 @@ async function flushQueue(force) {
   var data = await lastFmRequest("track.scrobble", params, { method: "POST" });
   operationState("queue").inFlight = false;
   if (data && data.error) {
-    var queueError = safeLastErrorMessage(data, "Unable to reach Last.fm.");
+    var queueError = safeLastErrorMessage(data, "无法连接 Last.fm。");
     if (queueError.code === 9) {
       clearAuthState();
       clearOperationRetry("queue");
-      markOperationError("queue", "Last.fm session expired. Sign in again.");
+      markOperationError("queue", "Last.fm 会话已过期，请重新登录。");
       persistState();
       return;
     }
@@ -1524,12 +1530,12 @@ async function flushQueue(force) {
     }
     state.queue = batch.concat(state.queue.slice(batch.length));
     scheduleOperationRetry("queue", queueError.retryable ? backoffDelayMs(operationState("queue").failureCount + 1) : BACKOFF_MAX_MS, false);
-    markOperationError("queue", "Failed to flush scrobble queue: " + queueError.message);
+    markOperationError("queue", "记录队列发送失败：" + queueError.message);
     if (!force && queueError.retryable) {
       setResult(
         state.queue.length === 1
-          ? "1 queued scrobble will retry in " + formatRetryDelay(operationState("queue").nextAllowedAtEpochMs - nowEpochMs()) + "."
-          : state.queue.length + " queued scrobbles will retry in " + formatRetryDelay(operationState("queue").nextAllowedAtEpochMs - nowEpochMs()) + "."
+          ? "1 条排队记录将在 " + formatRetryDelay(operationState("queue").nextAllowedAtEpochMs - nowEpochMs()) + " 后重试。"
+          : state.queue.length + " 条排队记录将在 " + formatRetryDelay(operationState("queue").nextAllowedAtEpochMs - nowEpochMs()) + " 后重试。"
       , false);
     }
     persistState();
@@ -1556,7 +1562,7 @@ async function flushQueue(force) {
     }
   }
   state.queue = remaining.concat(state.queue.slice(batch.length));
-  state.lastResult = batch.length === 1 ? "Scrobbled " + batch[0].title : "Flushed " + batch.length + " queued scrobbles";
+  state.lastResult = batch.length === 1 ? "已记录 " + batch[0].title : "已发送 " + batch.length + " 条排队记录";
   logInfo(state.lastResult);
   clearError();
   persistState();
@@ -1635,24 +1641,24 @@ function compactStatusLabel() {
 }
 
 function connectionLabel() {
-  if (state.auth.status === "pending" && !authConnected()) return "Awaiting Last.fm approval";
-  if (authConnected()) return "Connected as " + (state.auth.username || "Last.fm user");
-  if (oauthSessionState().expired) return "Last.fm login expired";
-  return "Not connected";
+  if (state.auth.status === "pending" && !authConnected()) return "等待 Last.fm 授权";
+  if (authConnected()) return "已连接为 " + (state.auth.username || "Last.fm 用户");
+  if (oauthSessionState().expired) return "Last.fm 登录已过期";
+  return "未连接";
 }
 
 function currentSourceLabel() {
-  if (!hasMediaBridge()) return "Host app update needed";
+  if (!hasMediaBridge()) return "需要更新宿主应用";
   var snapshot = state.lastSnapshot;
-  if (!snapshot) return "No active track";
-  return trimString(snapshot.sourceApp) || "Unknown source";
+  if (!snapshot) return "暂无正在播放的曲目";
+  return trimString(snapshot.sourceApp) || "未知来源";
 }
 
 function currentTrackTitle() {
-  if (!hasMediaBridge()) return "Media bridge unavailable";
+  if (!hasMediaBridge()) return "媒体桥不可用";
   var snapshot = state.lastSnapshot;
-  if (!snapshot) return "Nothing playing";
-  return trimString(snapshot.title) || "Nothing playing";
+  if (!snapshot) return "没有正在播放的内容";
+  return trimString(snapshot.title) || "没有正在播放的内容";
 }
 
 function currentTrackAlbum() {
@@ -1676,8 +1682,8 @@ function currentTrackArtist() {
 
 function currentSourceBadgeLabel() {
   var source = currentSourceLabel();
-  if (source === "No active track") return "Ready";
-  if (source === "Host app update needed") return "Needs update";
+  if (source === "暂无正在播放的曲目") return "就绪";
+  if (source === "需要更新宿主应用") return "需要更新";
   return source;
 }
 
@@ -1685,7 +1691,7 @@ function mediaBridgeStatusView() {
   return View.frame(
     View.vstack([
       lastFmBadgeNode(18, "warning"),
-      View.text("Last.fm connected", {
+      View.text("Last.fm 已连接", {
         style: "title",
         color: "white",
         lineLimit: 1
@@ -1696,7 +1702,7 @@ function mediaBridgeStatusView() {
         lineLimit: 1,
         multilineTextAlignment: "center"
       }),
-      View.text("Playback data is temporarily unavailable in this app session. Relaunch SuperIsland to restore the media bridge.", {
+      View.text("当前应用会话中暂时无法获取播放数据，请重新启动 SuperIsland 以恢复媒体桥。", {
         style: "footnote",
         color: warningTextColor(),
         lineLimit: 3,
@@ -1715,7 +1721,7 @@ function authRequiredCompactIcon() {
 }
 
 function compactView() {
-  var idleBadge = !state.lastSnapshot || currentSourceLabel() === "No active track";
+  var idleBadge = !state.lastSnapshot || currentSourceLabel() === "暂无正在播放的曲目";
   if (idleBadge) {
     return View.hstack([
       lastFmIconNode(18, 5),
@@ -1855,7 +1861,7 @@ function stopPolling() {
 
 function signOut() {
   if (!authConnected() && state.auth.status !== "pending") {
-    setResult("Last.fm is already disconnected.");
+    setResult("Last.fm 已断开连接。");
     clearError();
     return;
   }
@@ -1864,7 +1870,7 @@ function signOut() {
   clearOperationRetry("queue");
   state.currentPlayback = null;
   state.lastSnapshot = null;
-  state.lastResult = "Signed out of Last.fm";
+  state.lastResult = "已退出 Last.fm";
   logInfo(state.lastResult);
   clearError();
   persistState();
@@ -1873,13 +1879,13 @@ function signOut() {
 function toggleEnabled(forceValue) {
   var nextValue = typeof forceValue === "boolean" ? forceValue : !effectiveEnabled();
   SuperIsland.store.set("enabledOverride", nextValue);
-  setResult(nextValue ? "Auto scrobbling enabled" : "Auto scrobbling paused");
+  setResult(nextValue ? "自动记录已启用" : "自动记录已暂停");
 }
 
 function toggleSendNowPlaying(forceValue) {
   var nextValue = typeof forceValue === "boolean" ? forceValue : !sendNowPlayingEnabled();
   SuperIsland.store.set("sendNowPlayingOverride", nextValue);
-  setResult(nextValue ? "Now playing updates enabled" : "Now playing updates paused");
+  setResult(nextValue ? "正在播放更新已启用" : "正在播放更新已暂停");
 }
 
 loadState();
@@ -1906,28 +1912,28 @@ SuperIsland.registerModule({
     if (actionID === "openAlbumPage") {
       if (lastFmAlbumURL()) {
         SuperIsland.openURL(lastFmAlbumURL());
-        setResult("Opened album on Last.fm.");
+        setResult("已在 Last.fm 打开专辑。");
       }
       return;
     }
     if (actionID === "openTrackPage") {
       if (lastFmTrackURL()) {
         SuperIsland.openURL(lastFmTrackURL());
-        setResult("Opened track on Last.fm.");
+        setResult("已在 Last.fm 打开曲目。");
       }
       return;
     }
     if (actionID === "openArtistPage") {
       if (lastFmArtistURL()) {
         SuperIsland.openURL(lastFmArtistURL());
-        setResult("Opened artist on Last.fm.");
+        setResult("已在 Last.fm 打开艺术家。");
       }
       return;
     }
     if (actionID === "openProfilePage") {
       if (lastFmProfileURL()) {
         SuperIsland.openURL(lastFmProfileURL());
-        setResult("Opened your Last.fm profile.");
+        setResult("已打开您的 Last.fm 个人主页。");
       }
       return;
     }
@@ -1946,7 +1952,7 @@ SuperIsland.registerModule({
     }
     if (actionID === "dismissError") {
       clearError();
-      setResult("Status cleared.");
+      setResult("状态已清除。");
       return;
     }
     if (actionID === "toggleEnabled") {

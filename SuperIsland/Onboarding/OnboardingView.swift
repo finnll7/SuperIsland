@@ -294,11 +294,11 @@ private struct WelcomeScreen: View {
                 .padding(.bottom, 24)
 
             VStack(spacing: 8) {
-                Text("Welcome to SuperIsland")
+                Text("欢迎使用 SuperIsland")
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(OBColors.textPrimary)
 
-                Text("Your notch, reimagined. A quick setup\nand you're ready to go.")
+                Text("你的灵动岛，焕然一新。快速设置\n即可开始使用。")
                     .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(OBColors.textSecondary)
                     .multilineTextAlignment(.center)
@@ -309,7 +309,7 @@ private struct WelcomeScreen: View {
 
             Spacer(minLength: 20)
 
-            PrimaryButton(title: "Get Started", action: next)
+            PrimaryButton(title: "开始使用", action: next)
                 .opacity(showContent ? 1 : 0)
         }
         .frame(maxWidth: OnboardingMetrics.contentWidth)
@@ -343,11 +343,11 @@ private struct PermissionsScreen: View {
                 .padding(.bottom, 20)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Permissions")
+                Text("权限")
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(OBColors.textPrimary)
 
-                Text("SuperIsland needs a few permissions to work properly.")
+                Text("SuperIsland 需要一些权限才能正常工作。")
                     .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(OBColors.textSecondary)
             }
@@ -366,7 +366,7 @@ private struct PermissionsScreen: View {
 
             Spacer(minLength: 0)
 
-            PrimaryButton(title: "Continue", action: next)
+            PrimaryButton(title: "继续", action: next)
         }
         .frame(maxWidth: OnboardingMetrics.contentWidth, maxHeight: .infinity, alignment: .top)
     }
@@ -395,7 +395,7 @@ private struct PermissionRow: View {
                         .foregroundStyle(OBColors.textPrimary)
 
                     if permission.isRequired {
-                        Text("Required")
+                        Text("必需")
                             .font(.system(size: 9, weight: .bold, design: .rounded))
                             .foregroundStyle(Color.white.opacity(0.4))
                             .padding(.horizontal, 5)
@@ -416,7 +416,7 @@ private struct PermissionRow: View {
                 GrantedBadge()
             } else {
                 Button(action: action) {
-                    Text(permission == .bluetooth ? "Open Settings" : "Grant")
+                    Text(permission == .bluetooth ? "打开设置" : "授予")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Color.white.opacity(0.85))
                         .padding(.horizontal, 12)
@@ -441,7 +441,7 @@ private struct GrantedBadge: View {
         HStack(spacing: 4) {
             Image(systemName: "checkmark")
                 .font(.system(size: 8, weight: .bold))
-            Text("Granted")
+            Text("已授予")
                 .font(.system(size: 11, weight: .semibold))
         }
         .foregroundStyle(OBColors.accent)
@@ -489,11 +489,11 @@ private struct GesturesScreen: View {
 
             // Gesture instructions
             VStack(spacing: 6) {
-                Text("Swipe the island")
+                Text("滑动灵动岛")
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundStyle(OBColors.textPrimary)
 
-                Text("Swipe left or right on the notch to switch between modules.")
+                Text("在灵动岛上左右滑动即可在模块之间切换。")
                     .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(OBColors.textSecondary)
                     .multilineTextAlignment(.center)
@@ -501,7 +501,7 @@ private struct GesturesScreen: View {
 
             Spacer(minLength: 0)
 
-            PrimaryButton(title: "Understood", action: next)
+            PrimaryButton(title: "知道了", action: next)
         }
         .frame(maxWidth: OnboardingMetrics.contentWidth, maxHeight: .infinity)
         .onAppear {
@@ -527,7 +527,7 @@ private struct SwipeIndicator: View {
                 .font(.system(size: 34, weight: .regular))
                 .foregroundStyle(.white.opacity(0.85))
 
-            Text("SWIPE")
+            Text("滑动")
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.7))
                 .tracking(1.5)
@@ -569,22 +569,22 @@ private struct OnboardingExtensionInfo: Identifiable {
     static let available: [OnboardingExtensionInfo] = [
         OnboardingExtensionInfo(
             id: "superisland.pomodoro",
-            name: "Pomodoro Timer",
-            description: "Focus timer with countdown in the island",
+            name: "番茄钟",
+            description: "在灵动岛中显示专注倒计时",
             fallbackIcon: "timer",
             badge: nil
         ),
         OnboardingExtensionInfo(
             id: "superisland.whatsapp-web",
             name: "WhatsApp Web",
-            description: "Route WhatsApp messages to the island",
+            description: "将 WhatsApp 消息转发到灵动岛",
             fallbackIcon: "message.fill",
-            badge: "Requires Login"
+            badge: "需要登录"
         ),
         OnboardingExtensionInfo(
             id: "superisland.ai-usage",
-            name: "AI Usage",
-            description: "Claude & Codex usage rings in the notch",
+            name: "AI 用量",
+            description: "在灵动岛中显示 Claude 与 Codex 的使用量环",
             fallbackIcon: "brain.head.profile",
             badge: nil
         ),
@@ -602,11 +602,11 @@ private struct ExtensionsScreen: View {
                 .padding(.bottom, 20)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Extensions")
+                Text("扩展")
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(OBColors.textPrimary)
 
-                Text("Add extra capabilities to your island.")
+                Text("为你的灵动岛添加更多功能。")
                     .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(OBColors.textSecondary)
             }
@@ -631,7 +631,7 @@ private struct ExtensionsScreen: View {
 
             Spacer(minLength: 0)
 
-            PrimaryButton(title: "Continue", action: next)
+            PrimaryButton(title: "继续", action: next)
         }
         .frame(maxWidth: OnboardingMetrics.contentWidth, maxHeight: .infinity, alignment: .top)
     }
@@ -671,7 +671,7 @@ private struct ExtensionRow: View {
             Spacer(minLength: 4)
 
             Button(action: toggle) {
-                Text(isEnabled ? "Added" : "Add")
+                Text(isEnabled ? "已添加" : "添加")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(isEnabled ? OBColors.accent : Color.white.opacity(0.85))
                     .padding(.horizontal, 14)
@@ -735,7 +735,7 @@ private struct ReadyScreen: View {
         let names = OnboardingExtensionInfo.available
             .filter { enabledExtensions.contains($0.id) }
             .map(\.name)
-        if names.isEmpty { return "None" }
+        if names.isEmpty { return "无" }
         return names.joined(separator: ", ")
     }
 
@@ -750,11 +750,11 @@ private struct ReadyScreen: View {
                 .padding(.bottom, 20)
 
             VStack(spacing: 8) {
-                Text("You're all set")
+                Text("一切就绪")
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(OBColors.textPrimary)
 
-                Text("SuperIsland will run in the background.")
+                Text("SuperIsland 将在后台运行。")
                     .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(OBColors.textSecondary)
             }
@@ -764,13 +764,13 @@ private struct ReadyScreen: View {
             VStack(spacing: 1) {
                 SummaryRow(
                     icon: "checkmark.shield.fill",
-                    title: "Permissions",
-                    detail: "\(grantedCount) of 4 granted",
+                    title: "权限",
+                    detail: "已授予 \(grantedCount)/4 项",
                     isFirst: true
                 )
                 SummaryRow(
                     icon: "puzzlepiece.extension.fill",
-                    title: "Extensions",
+                    title: "扩展",
                     detail: enabledNames,
                     isFirst: false
                 )
@@ -782,13 +782,13 @@ private struct ReadyScreen: View {
 
             VStack(spacing: 10) {
                 PrimaryButton(
-                    title: launching ? "Launching..." : "Get Started",
+                    title: launching ? "正在启动..." : "开始使用",
                     isDisabled: launching,
                     action: getStarted
                 )
 
                 Button(action: openSettings) {
-                    Text("Open Settings Instead")
+                    Text("改为打开设置")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Color.white.opacity(0.35))
                 }
@@ -866,7 +866,7 @@ private struct NavBackButton: View {
             HStack(spacing: 4) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 11, weight: .semibold))
-                Text("Back")
+                Text("返回")
                     .font(.system(size: 13, weight: .medium))
             }
             .foregroundStyle(Color.white.opacity(0.55))
@@ -1060,9 +1060,9 @@ private extension PermissionType {
     var requestActionTitle: String {
         switch self {
         case .bluetooth:
-            return "Open Settings"
+            return "打开设置"
         default:
-            return "Request Access"
+            return "请求访问权限"
         }
     }
 }

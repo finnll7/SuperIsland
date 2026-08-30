@@ -22,11 +22,11 @@ enum ShelfRetentionOption: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .never: return "Never"
-        case .oneDay: return "1 day"
-        case .oneWeek: return "7 days"
-        case .oneMonth: return "30 days"
-        case .threeMonths: return "90 days"
+        case .never: return "从不"
+        case .oneDay: return "1 天"
+        case .oneWeek: return "7 天"
+        case .oneMonth: return "30 天"
+        case .threeMonths: return "90 天"
         }
     }
 }

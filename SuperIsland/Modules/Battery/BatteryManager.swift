@@ -118,7 +118,7 @@ final class BatteryManager: ObservableObject {
 
         if let source = info[kIOPSPowerSourceStateKey] as? String {
             isPluggedIn = source == kIOPSACPowerValue
-            powerSource = isPluggedIn ? "Power Adapter" : "Battery"
+            powerSource = isPluggedIn ? "电源适配器" : "电池"
 
             if hasLoadedInitialSnapshot, wasPluggedIn, !isPluggedIn {
                 EnergySuggestionPresenter.shared.suggestLowPower(reason: .battery)
@@ -128,13 +128,13 @@ final class BatteryManager: ObservableObject {
         if let timeToEmpty = info[kIOPSTimeToEmptyKey] as? Int, timeToEmpty > 0 {
             let hours = timeToEmpty / 60
             let minutes = timeToEmpty % 60
-            timeRemaining = hours > 0 ? "\(hours)h \(minutes)m remaining" : "\(minutes)m remaining"
+            timeRemaining = hours > 0 ? "剩余 \(hours) 小时 \(minutes) 分钟" : "剩余 \(minutes) 分钟"
         } else if let timeToFull = info[kIOPSTimeToFullChargeKey] as? Int, timeToFull > 0 {
             let hours = timeToFull / 60
             let minutes = timeToFull % 60
-            timeRemaining = hours > 0 ? "\(hours)h \(minutes)m until full" : "\(minutes)m until full"
+            timeRemaining = hours > 0 ? "充满还需 \(hours) 小时 \(minutes) 分钟" : "充满还需 \(minutes) 分钟"
         } else {
-            timeRemaining = isCharging ? "Calculating..." : ""
+            timeRemaining = isCharging ? "计算中…" : ""
         }
 
         appendHistorySample(force: false)

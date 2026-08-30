@@ -18,14 +18,14 @@ struct ModuleSettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
 
-            SettingSectionLabel(title: "Media & HUD")
+            SettingSectionLabel(title: "媒体与 HUD")
             SettingGroup {
-                SettingToggleRow(title: "Now Playing", isOn: $appState.nowPlayingEnabled)
+                SettingToggleRow(title: "正在播放", isOn: $appState.nowPlayingEnabled)
                 if appState.nowPlayingEnabled {
                     SettingRowDivider()
                     SettingToggleRow(
-                        title: "Browser media detection",
-                        description: "Use macOS automation to detect media in allowed browsers.",
+                        title: "浏览器媒体检测",
+                        description: "使用 macOS 自动化在允许的浏览器中检测媒体。",
                         isOn: $nowPlayingManager.browserDetectionEnabled
                     )
                     if nowPlayingManager.browserDetectionEnabled {
@@ -33,52 +33,52 @@ struct ModuleSettingsView: View {
                     }
                 }
                 SettingRowDivider()
-                SettingToggleRow(title: "Volume HUD", isOn: $appState.volumeHUDEnabled)
+                SettingToggleRow(title: "音量 HUD", isOn: $appState.volumeHUDEnabled)
             }
 
-            SettingSectionLabel(title: "Home")
+            SettingSectionLabel(title: "主屏幕")
             SettingGroup {
-                homeSlotRow(title: "Left slot", selection: $appState.homeLeadingPanelRaw)
+                homeSlotRow(title: "左侧槽位", selection: $appState.homeLeadingPanelRaw)
                 SettingRowDivider()
-                homeSlotRow(title: "Center slot", selection: $appState.homeCenterPanelRaw)
+                homeSlotRow(title: "中间槽位", selection: $appState.homeCenterPanelRaw)
                 SettingRowDivider()
-                homeSlotRow(title: "Right slot", selection: $appState.homeTrailingPanelRaw)
+                homeSlotRow(title: "右侧槽位", selection: $appState.homeTrailingPanelRaw)
             }
 
-            SettingSectionLabel(title: "System")
+            SettingSectionLabel(title: "系统")
             SettingGroup {
-                SettingToggleRow(title: "Battery", isOn: $appState.batteryEnabled)
+                SettingToggleRow(title: "电量", isOn: $appState.batteryEnabled)
                 SettingRowDivider()
-                SettingToggleRow(title: "Shelf", isOn: $appState.shelfEnabled)
+                SettingToggleRow(title: "暂存", isOn: $appState.shelfEnabled)
                 SettingRowDivider()
-                SettingToggleRow(title: "Auto-open Shelf on Drop", isOn: $appState.shelfAutoOpenOnDrop)
+                SettingToggleRow(title: "拖放时自动打开暂存", isOn: $appState.shelfAutoOpenOnDrop)
                 SettingRowDivider()
                 shelfRetentionRow
                 SettingRowDivider()
-                SettingToggleRow(title: "Connectivity", isOn: $appState.connectivityEnabled)
+                SettingToggleRow(title: "连接状态", isOn: $appState.connectivityEnabled)
             }
 
-            SettingSectionLabel(title: "Information")
+            SettingSectionLabel(title: "信息")
             SettingGroup {
-                SettingToggleRow(title: "Calendar", isOn: calendarEnabledBinding)
+                SettingToggleRow(title: "日历", isOn: calendarEnabledBinding)
                 if appState.calendarEnabled {
                     SettingRowDivider()
                     calendarPermissionRow
                     if calendarManager.hasAccess {
                         SettingRowDivider()
                         SettingToggleRow(
-                            title: "Collapse duplicate events",
-                            description: "Hide repeated holidays or birthdays with the same title and time.",
+                            title: "折叠重复事件",
+                            description: "隐藏标题和时间相同的重复节日或生日。",
                             isOn: $calendarManager.collapseDuplicates
                         )
                         SettingRowDivider()
                         SettingToggleRow(
-                            title: "Hide holidays",
+                            title: "隐藏节日",
                             isOn: $calendarManager.hideHolidays
                         )
                         SettingRowDivider()
                         SettingToggleRow(
-                            title: "Hide birthdays",
+                            title: "隐藏生日",
                             isOn: $calendarManager.hideBirthdays
                         )
                         SettingRowDivider()
@@ -87,10 +87,10 @@ struct ModuleSettingsView: View {
                     }
                 }
                 SettingRowDivider()
-                SettingToggleRow(title: "Weather", isOn: $appState.weatherEnabled)
+                SettingToggleRow(title: "天气", isOn: $appState.weatherEnabled)
                 SettingRowDivider()
                 HStack {
-                    Text("Temperature Unit")
+                    Text("温度单位")
                         .font(.system(size: 13))
                     Spacer(minLength: 8)
                     Picker("", selection: $appState.temperatureUnit) {
@@ -103,14 +103,14 @@ struct ModuleSettingsView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 11)
                 SettingRowDivider()
-                SettingToggleRow(title: "Notifications", isOn: notificationsEnabledBinding)
+                SettingToggleRow(title: "通知", isOn: notificationsEnabledBinding)
                 if appState.notificationsEnabled {
                     SettingRowDivider()
                     notificationPermissionRow
                     SettingRowDivider()
                     SettingToggleRow(
-                        title: "Show previews",
-                        description: "Display sender and message text when available.",
+                        title: "显示预览",
+                        description: "可用时显示发送者和消息文本。",
                         isOn: notificationPreviewsBinding
                     )
                     SettingRowDivider()
@@ -126,9 +126,9 @@ struct ModuleSettingsView: View {
                 }
             }
 
-            SettingSectionLabel(title: "Productivity")
+            SettingSectionLabel(title: "效率")
             SettingGroup {
-                SettingToggleRow(title: "Teleprompter", isOn: teleprompterEnabledBinding)
+                SettingToggleRow(title: "提词器", isOn: teleprompterEnabledBinding)
                     .dataAnnotationID("teleprompter-module-toggle")
                 if appState.teleprompterEnabled {
                     SettingRowDivider()
@@ -136,7 +136,7 @@ struct ModuleSettingsView: View {
                     SettingRowDivider()
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Mode")
+                            Text("模式")
                                 .font(.system(size: 13))
                             Text(teleprompter.listeningMode.description)
                                 .font(.system(size: 11))
@@ -157,10 +157,10 @@ struct ModuleSettingsView: View {
                     .padding(.vertical, 11)
                     SettingRowDivider()
                     HStack {
-                        Text("Script")
+                        Text("脚本")
                             .font(.system(size: 13))
                         Spacer(minLength: 8)
-                        Button("Edit Script…") {
+                        Button("编辑脚本…") {
                             TeleprompterScriptEditorWindowController.show()
                         }
                         .font(.system(size: 12))
@@ -206,7 +206,7 @@ struct ModuleSettingsView: View {
 
         return HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Word Tracking permissions")
+                Text("逐词跟踪权限")
                     .font(.system(size: 13))
                 Text(teleprompterPermissionDescription)
                     .font(.system(size: 11))
@@ -215,7 +215,7 @@ struct ModuleSettingsView: View {
             }
             Spacer(minLength: 12)
             if ready {
-                Label("Ready", systemImage: "checkmark.circle.fill")
+                Label("就绪", systemImage: "checkmark.circle.fill")
                     .font(.system(size: 11))
                     .foregroundColor(.green)
             } else {
@@ -238,18 +238,18 @@ struct ModuleSettingsView: View {
 
         if microphoneStatus == .denied || microphoneStatus == .restricted ||
             speechStatus == .denied || speechStatus == .restricted {
-            return "Access was denied or restricted. Open System Settings to enable Word Tracking."
+            return "访问已被拒绝或受限。请打开系统设置以启用逐词跟踪。"
         }
 
         switch (microphone, speech) {
         case (true, true):
-            return "Microphone and Speech Recognition are ready for Word Tracking."
+            return "麦克风和语音识别已就绪，可用于逐词跟踪。"
         case (false, true):
-            return "Microphone access will be requested when Word Tracking is enabled."
+            return "启用逐词跟踪时将请求麦克风访问权限。"
         case (true, false):
-            return "Speech Recognition access will be requested when Word Tracking is enabled."
+            return "启用逐词跟踪时将请求语音识别访问权限。"
         case (false, false):
-            return "Microphone and Speech Recognition access are requested when Teleprompter is enabled."
+            return "启用提词器时将请求麦克风和语音识别访问权限。"
         }
     }
 
@@ -258,15 +258,15 @@ struct ModuleSettingsView: View {
         let speech = PermissionsManager.shared.speechRecognitionAuthorizationStatus()
         if microphone == .denied || microphone == .restricted ||
             speech == .denied || speech == .restricted {
-            return "Open Settings"
+            return "打开设置"
         }
-        return "Grant Access"
+        return "授予权限"
     }
 
     private var calendarPermissionRow: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Calendar access")
+                Text("日历访问权限")
                     .font(.system(size: 13))
                 Text(calendarPermissionDescription)
                     .font(.system(size: 11))
@@ -286,7 +286,7 @@ struct ModuleSettingsView: View {
     private var notificationPermissionRow: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Permission")
+                Text("权限")
                     .font(.system(size: 13))
                 Text(notificationPermissionDescription)
                     .font(.system(size: 11))
@@ -350,9 +350,9 @@ struct ModuleSettingsView: View {
     private var calendarLookaheadRow: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Upcoming range")
+                Text("即将到来范围")
                     .font(.system(size: 13))
-                Text("How many days appear in the Upcoming column.")
+                Text("在“即将到来”列中显示多少天。")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
@@ -370,9 +370,9 @@ struct ModuleSettingsView: View {
     private var notificationRetentionRow: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Retained items")
+                Text("保留项目")
                     .font(.system(size: 13))
-                Text("How many feed items stay available in the island.")
+                Text("岛中保留多少条信息流项目。")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
@@ -391,7 +391,7 @@ struct ModuleSettingsView: View {
     private var calendarSourceRows: some View {
         if calendarManager.calendarSourceGroups.isEmpty {
             SettingRowDivider()
-            Text("No calendars available")
+            Text("没有可用的日历")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 16)
@@ -519,50 +519,50 @@ struct ModuleSettingsView: View {
     private var calendarPermissionDescription: String {
         switch calendarManager.authorizationStatus {
         case .fullAccess, .authorized:
-            return "Allowed. Choose which calendars appear in SuperIsland."
+            return "已允许。选择要在 SuperIsland 中显示的日历。"
         case .notDetermined:
-            return "Not requested. Allow access to show upcoming events."
+            return "尚未请求。允许访问以显示即将到来的事件。"
         case .denied:
-            return "Denied. Open System Settings to allow Calendar access."
+            return "已拒绝。请打开系统设置以允许日历访问。"
         case .restricted:
-            return "Restricted by macOS settings."
+            return "受 macOS 设置限制。"
         case .writeOnly:
-            return "Write-only access is not enough to display events."
+            return "仅写入权限不足以显示事件。"
         @unknown default:
-            return "Unknown. Check macOS Calendar privacy settings."
+            return "未知。请检查 macOS 日历隐私设置。"
         }
     }
 
     private var notificationPermissionDescription: String {
         switch notificationManager.authorizationStatus {
         case .authorized:
-            return "Allowed. SuperIsland can send its own notifications and extension alerts."
+            return "已允许。SuperIsland 可以发送自己的通知和扩展提醒。"
         case .denied:
-            return "Denied. Open System Settings to allow SuperIsland notifications."
+            return "已拒绝。请打开系统设置以允许 SuperIsland 通知。"
         case .notDetermined:
-            return "Not requested. Allow this when you want SuperIsland or extensions to send macOS notifications."
+            return "尚未请求。当你希望 SuperIsland 或扩展发送 macOS 通知时允许。"
         case .provisional, .ephemeral:
-            return "Allowed with limited delivery."
+            return "已允许，但投递受限。"
         @unknown default:
-            return "Unknown. Check macOS notification settings."
+            return "未知。请检查 macOS 通知设置。"
         }
     }
 
     private var calendarPermissionButtonTitle: String {
         switch calendarManager.authorizationStatus {
         case .notDetermined:
-            return "Request"
+            return "请求"
         default:
-            return "Open Settings"
+            return "打开设置"
         }
     }
 
     private var notificationPermissionButtonTitle: String {
         switch notificationManager.authorizationStatus {
         case .notDetermined:
-            return "Request"
+            return "请求"
         default:
-            return "Open Settings"
+            return "打开设置"
         }
     }
 
@@ -587,26 +587,26 @@ struct ModuleSettingsView: View {
     private func calendarTypeLabel(_ type: EKCalendarType) -> String {
         switch type {
         case .local:
-            return "Local"
+            return "本地"
         case .calDAV:
             return "CalDAV"
         case .exchange:
             return "Exchange"
         case .subscription:
-            return "Subscription"
+            return "订阅"
         case .birthday:
-            return "Birthdays"
+            return "生日"
         @unknown default:
-            return "Calendar"
+            return "日历"
         }
     }
 
     private var shelfRetentionRow: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Shelf retention")
+                Text("暂存保留")
                     .font(.system(size: 13))
-                Text("Pinned items are kept")
+                Text("固定项目保留时长")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
@@ -656,7 +656,7 @@ struct ModuleSettingsView: View {
     private func browserToggleRow(_ browser: NowPlayingBrowserTarget) -> some View {
         SettingToggleRow(
             title: browser.displayName,
-            description: "Allow SuperIsland to look for media in this browser.",
+            description: "允许 SuperIsland 在此浏览器中查找媒体。",
             isOn: browserBinding(for: browser.id)
         )
     }
@@ -664,7 +664,7 @@ struct ModuleSettingsView: View {
     private var browserDetectionTestRow: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Detection test")
+                Text("检测测试")
                     .font(.system(size: 13))
                 Text(browserDetectionMessage)
                     .font(.system(size: 11))
@@ -673,11 +673,11 @@ struct ModuleSettingsView: View {
             }
             Spacer(minLength: 12)
             VStack(alignment: .trailing, spacing: 6) {
-                Button("Test") {
+                Button("测试") {
                     nowPlayingManager.testBrowserDetection()
                 }
                 .font(.system(size: 12))
-                Button("Open Settings") {
+                Button("打开设置") {
                     nowPlayingManager.openAutomationSettings()
                 }
                 .font(.system(size: 12))
@@ -698,6 +698,6 @@ struct ModuleSettingsView: View {
         if !nowPlayingManager.browserDetectionTestMessage.isEmpty {
             return nowPlayingManager.browserDetectionTestMessage
         }
-        return "Requires Automation permission and JavaScript from Apple Events in the browser."
+        return "需要自动化权限以及浏览器中来自 Apple Events 的 JavaScript。"
     }
 }

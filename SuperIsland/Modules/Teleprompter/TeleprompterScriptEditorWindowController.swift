@@ -16,7 +16,7 @@ final class TeleprompterScriptEditorWindowController {
         let hostingController = NSHostingController(rootView: rootView)
 
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "Teleprompter Script"
+        window.title = "提词器脚本"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.setContentSize(NSSize(width: 560, height: 460))
         window.minSize = NSSize(width: 400, height: 340)
@@ -67,7 +67,7 @@ struct TeleprompterScriptEditorView: View {
         HStack(spacing: 16) {
             // Title + word count
             VStack(alignment: .leading, spacing: 2) {
-                Text("Script")
+                Text("脚本")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white.opacity(0.82))
                 Text(wordCountLabel)
@@ -88,7 +88,7 @@ struct TeleprompterScriptEditorView: View {
             toolbarButton(icon: "trash", color: .white.opacity(0.45)) {
                 draftText = ""
             }
-            .help("Clear")
+            .help("清空")
 
             // Done (filled circle checkmark — stands out against the dark bg)
             Button { applyAndClose() } label: {
@@ -104,7 +104,7 @@ struct TeleprompterScriptEditorView: View {
             .buttonStyle(.plain)
             .hoverPointer()
             .keyboardShortcut(.return, modifiers: .command)
-            .help("Done (⌘↩)")
+            .help("完成（⌘↩）")
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 11)
@@ -143,7 +143,7 @@ struct TeleprompterScriptEditorView: View {
 
     private var controlsBar: some View {
         HStack(spacing: 12) {
-            labeledControl("Size") {
+            labeledControl("字号") {
                 HStack(spacing: 6) {
                     styleButton("textformat.size.smaller") {
                         manager.fontSize = max(12, manager.fontSize - 2)
@@ -162,7 +162,7 @@ struct TeleprompterScriptEditorView: View {
                 .frame(height: 22)
                 .opacity(0.2)
 
-            labeledControl("Align") {
+            labeledControl("对齐") {
                 Picker("", selection: $manager.textAlignmentIndex) {
                     Image(systemName: "text.alignleft").tag(0)
                     Image(systemName: "text.aligncenter").tag(1)
@@ -177,7 +177,7 @@ struct TeleprompterScriptEditorView: View {
                 .frame(height: 22)
                 .opacity(0.2)
 
-            labeledControl("Speed") {
+            labeledControl("速度") {
                 speedControl
             }
 
@@ -279,22 +279,22 @@ struct TeleprompterScriptEditorView: View {
     private var wordCountLabel: String {
         let words = draftText.split(whereSeparator: \.isWhitespace).count
         return draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? "Empty"
-            : "\(words) word\(words == 1 ? "" : "s")"
+            ? "空白"
+            : "\(words) 个词"
     }
 
     private var bottomHelpText: String {
         switch manager.listeningMode {
         case .classic:
-            return "Classic scrolls upward at a steady speed."
+            return "经典模式以恒定速度向上滚动。"
         case .wordTracking:
-            return "Word Tracking follows your speech after Teleprompter permissions are granted."
+            return "授予提词器权限后，逐词跟踪模式会跟随你的语音。"
         }
     }
 
     private func applyAndClose() {
         manager.setScript(draftText)
-        NSApp.windows.first(where: { $0.title == "Teleprompter Script" })?.close()
+        NSApp.windows.first(where: { $0.title == "提词器脚本" })?.close()
     }
 
     private func speechLocaleLabel(_ locale: Locale) -> String {

@@ -19,27 +19,27 @@ enum PermissionType: CaseIterable {
 
     var title: String {
         switch self {
-        case .accessibility: return "Accessibility"
-        case .screenRecording: return "Screen Recording"
-        case .calendar: return "Calendar"
-        case .notifications: return "Notifications"
-        case .microphone: return "Microphone"
-        case .speechRecognition: return "Speech Recognition"
-        case .location: return "Location"
-        case .bluetooth: return "Bluetooth"
+        case .accessibility: return "辅助功能"
+        case .screenRecording: return "屏幕录制"
+        case .calendar: return "日历"
+        case .notifications: return "通知"
+        case .microphone: return "麦克风"
+        case .speechRecognition: return "语音识别"
+        case .location: return "定位"
+        case .bluetooth: return "蓝牙"
         }
     }
 
     var description: String {
         switch self {
-        case .accessibility: return "Needed for gesture detection and system event monitoring"
-        case .screenRecording: return "Lets SuperIsland appear properly in screen recordings"
-        case .calendar: return "Show upcoming events in the Super Island"
-        case .notifications: return "Show supported notification sources in the Super Island"
-        case .microphone: return "Audio visualization for the spectrogram"
-        case .speechRecognition: return "Follow along with Teleprompter scripts as you read"
-        case .location: return "Provide weather information for your location"
-        case .bluetooth: return "Show connected device notifications"
+        case .accessibility: return "用于手势检测和系统事件监控"
+        case .screenRecording: return "让 SuperIsland 在屏幕录制中正常显示"
+        case .calendar: return "在灵动岛中显示即将到来的日程"
+        case .notifications: return "在灵动岛中显示受支持的通知来源"
+        case .microphone: return "用于频谱图的音频可视化"
+        case .speechRecognition: return "在朗读时跟随提词器脚本"
+        case .location: return "提供您所在位置的天气信息"
+        case .bluetooth: return "显示已连接设备的通知"
         }
     }
 

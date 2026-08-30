@@ -156,8 +156,8 @@ final class AutoUpdater: ObservableObject {
 
         var errorDescription: String? {
             switch self {
-            case .appNotFoundInDMG: return "Could not find app in update package."
-            case .mountFailed: return "Could not open update package."
+            case .appNotFoundInDMG: return "更新包中未找到应用。"
+            case .mountFailed: return "无法打开更新包。"
             }
         }
     }

@@ -328,7 +328,7 @@ private struct TeleprompterFullExpandedInner: View {
                     HStack(spacing: 3) {
                         Image(systemName: "pencil")
                             .font(.system(size: 9, weight: .semibold))
-                        Text("Edit")
+                        Text("编辑")
                             .font(.system(size: 11, weight: .medium))
                     }
                     .foregroundColor(.white.opacity(0.38))
@@ -370,7 +370,7 @@ private func addScriptPrompt(size: CGFloat) -> some View {
     Button { TeleprompterScriptEditorWindowController.show() } label: {
         HStack(spacing: 5) {
             Image(systemName: "plus.circle")
-            Text("Add script")
+            Text("添加脚本")
                 .font(.system(size: size, weight: .medium))
         }
         .font(.system(size: size))
@@ -462,17 +462,17 @@ private struct TeleprompterSpeechStatus: View {
 
     private var statusText: String {
         if let error = speech.error, !error.isEmpty { return error }
-        if manager.isCountingDown { return "Starting soon" }
+        if manager.isCountingDown { return "即将开始" }
         if manager.isPlaying, speech.isListening {
             if !speech.lastSpokenText.isEmpty {
                 let spoken = speech.lastSpokenText.trimmingCharacters(in: .whitespacesAndNewlines)
-                return "Heard: \(spoken.prefix(18)) · \(diagnosticLabel)"
+                return "听到：\(spoken.prefix(18)) · \(diagnosticLabel)"
             }
             return speech.inputLevel > 0.006
-                ? "Listening · \(diagnosticLabel)"
-                : "Waiting for voice · \(diagnosticLabel)"
+                ? "正在聆听 · \(diagnosticLabel)"
+                : "等待语音 · \(diagnosticLabel)"
         }
-        return "Word Tracking"
+        return "逐词跟踪"
     }
 
     private var statusIcon: String {

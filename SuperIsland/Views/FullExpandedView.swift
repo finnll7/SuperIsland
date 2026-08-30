@@ -251,7 +251,7 @@ struct FullExpandedTopBarView: View {
         }
         .buttonStyle(.plain)
         .hoverPointer()
-        .help("Settings")
+        .help("设置")
     }
 
     private var batteryButton: some View {
@@ -279,7 +279,7 @@ struct FullExpandedTopBarView: View {
         }
         .buttonStyle(.plain)
         .hoverPointer()
-        .help("Battery")
+        .help("电池")
     }
 
     private var lockButton: some View {
@@ -307,7 +307,7 @@ struct FullExpandedTopBarView: View {
         }
         .buttonStyle(.plain)
         .hoverPointer()
-        .help(isLocked ? "Unlock island" : "Lock island open")
+        .help(isLocked ? "解锁灵动岛" : "锁定灵动岛")
     }
 
     private var trailingShoulderControls: some View {
@@ -356,7 +356,7 @@ struct FullExpandedTopBarView: View {
         }
         .buttonStyle(.plain)
         .hoverPointer()
-        .help("Notifications")
+        .help("通知")
     }
 
     private var notificationCountBadge: some View {

@@ -6,7 +6,7 @@ struct WeatherData {
     var temperature: Double = 0
     var temperatureHigh: Double = 0
     var temperatureLow: Double = 0
-    var condition: String = "Clear"
+    var condition: String = "晴朗"
     var conditionIcon: String = "sun.max.fill"
     var locationName: String = ""
     var hourlyForecast: [HourlyWeather] = []
@@ -173,7 +173,7 @@ final class WeatherManager: NSObject, ObservableObject {
             for i in startIndex..<endIndex {
                 let hourStr: String
                 if i == currentHour {
-                    hourStr = "Now"
+                    hourStr = "现在"
                 } else {
                     let hour = i % 24
                     hourStr = hour == 0 ? "12 AM" : (hour <= 12 ? "\(hour) \(hour < 12 ? "AM" : "PM")" : "\(hour - 12) PM")
@@ -193,19 +193,19 @@ final class WeatherManager: NSObject, ObservableObject {
 
     private func conditionName(for code: Int) -> String {
         switch code {
-        case 0: return "Clear"
-        case 1, 2, 3: return "Partly Cloudy"
-        case 45, 48: return "Foggy"
-        case 51, 53, 55: return "Drizzle"
-        case 61, 63, 65: return "Rain"
-        case 66, 67: return "Freezing Rain"
-        case 71, 73, 75: return "Snow"
-        case 77: return "Snow Grains"
-        case 80, 81, 82: return "Showers"
-        case 85, 86: return "Snow Showers"
-        case 95: return "Thunderstorm"
-        case 96, 99: return "Hailstorm"
-        default: return "Clear"
+        case 0: return "晴朗"
+        case 1, 2, 3: return "多云"
+        case 45, 48: return "雾"
+        case 51, 53, 55: return "毛毛雨"
+        case 61, 63, 65: return "雨"
+        case 66, 67: return "冻雨"
+        case 71, 73, 75: return "雪"
+        case 77: return "米雪"
+        case 80, 81, 82: return "阵雨"
+        case 85, 86: return "阵雪"
+        case 95: return "雷雨"
+        case 96, 99: return "冰雹"
+        default: return "晴朗"
         }
     }
 
