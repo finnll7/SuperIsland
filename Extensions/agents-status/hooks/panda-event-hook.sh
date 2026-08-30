@@ -96,6 +96,27 @@ if not title and d.get("hook_event_name") == "UserPromptSubmit":
     if isinstance(p, str) and p.strip():
         title = p.strip()
 
+# Panda task name: read the conversation title from panda's catalog DB so the
+# island shows the same task name as the Panda app. session_id here is the
+# panda conversation_id.
+if not title and session_id:
+    catalog = os.path.expanduser("~/.panda/desktop/catalog.db")
+    if os.path.exists(catalog):
+        try:
+            import sqlite3
+            conn = sqlite3.connect("file:%s?mode=ro" % catalog, uri=True)
+            row = conn.execute(
+                "SELECT title FROM conversation_summaries "
+                "WHERE conversation_id=? AND title != '' "
+                "ORDER BY updated_at DESC LIMIT 1",
+                (session_id,),
+            ).fetchone()
+            if row and row[0]:
+                title = row[0]
+            conn.close()
+        except Exception:
+            pass
+
 title = title[:120]
 
 term_map = {

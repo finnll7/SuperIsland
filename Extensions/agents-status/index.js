@@ -5,6 +5,7 @@ var EXT_VERSION = "1.7.0";
 var PORT = 7823;
 var BASE = "http://127.0.0.1:" + PORT;
 var POLL_INTERVAL_MS = 800;
+var IDLE_POLL_INTERVAL_MS = 5000;
 var SETTING_HOOKS_CC = "hooksClaudeCode";
 var SETTING_HOOKS_CODEX = "hooksCodex";
 var SETTING_HOOKS_PANDA = "hooksPanda";
@@ -541,6 +542,14 @@ function detectSoundTransitions(list) {
 }
 
 // --- Networking ----------------------------------------------------------
+function hasActiveSessions() {
+  for (var i = 0; i < sessions.length; i++) {
+    var st = effectiveState(sessions[i]);
+    if (st === "Working" || st === "Waiting" || st === "Error" || st === "Done") return true;
+  }
+  return false;
+}
+
 function fetchState() {
   if (inFlight) return;
   inFlight = true;
@@ -567,12 +576,34 @@ function fetchState() {
         if (bridgeOnline) dlog("bridge went offline status=" + status);
         bridgeOnline = false;
       }
+      scheduleNextPoll();
     })
     .catch(function (e) {
       inFlight = false;
       bridgeOnline = false;
       dlog("fetch threw: " + e);
+      scheduleNextPoll();
     });
+}
+
+// Adaptive polling: poll fast (800ms) while any agent session is active so the
+// island stays responsive, but slow to 5s when everything is idle to cut
+// background CPU/energy. The bridge's process scans are driven by these
+// /state requests, so lowering the idle rate also lowers its scan frequency.
+function startPolling() {
+  if (pollTimer !== null) return;
+  fetchState();
+}
+function stopPolling() {
+  if (pollTimer !== null) { clearTimeout(pollTimer); pollTimer = null; }
+}
+function scheduleNextPoll() {
+  if (pollTimer !== null) { clearTimeout(pollTimer); pollTimer = null; }
+  var interval = hasActiveSessions() ? POLL_INTERVAL_MS : IDLE_POLL_INTERVAL_MS;
+  pollTimer = setTimeout(function () {
+    pollTimer = null;
+    fetchState();
+  }, interval);
 }
 
 function postBridge(path, bodyString) {
@@ -807,10 +838,11 @@ SuperIsland.registerModule({
     precedence: function () {
       // Return > 0 whenever we want the pinned compact slot; higher values
       // just bias the tie-break when multiple pinned extensions compete.
-      // (Note: the host's legacy logic used precedence > 1 to *yield* to
-      // media, so we stay at 1 to hold the slot against music too.)
+      // When nothing is active (all sessions idle/empty) return 0 so the
+      // island yields the compact slot back to Now Playing / other modules
+      // instead of lingering on the agents-status view.
       if (!bridgeOnline) return 1;
-      return 1;
+      return hasActiveSessions() ? 1 : 0;
     }
   },
 
