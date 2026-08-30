@@ -67,8 +67,12 @@ INSTALLED_EXT_ROOT = (
     pathlib.Path.home() /
     "Library" / "Application Support" / "SuperIsland" / "Extensions" / "agents-status"
 )
-DEFAULT_CC_HOOK_SCRIPT = str(INSTALLED_EXT_ROOT / "hooks" / "cc-event-hook.sh")
-DEFAULT_CODEX_HOOK_SCRIPT = str(INSTALLED_EXT_ROOT / "hooks" / "codex-notify-hook.sh")
+# Hooks live next to the server script (bundled inside the .app or the repo),
+# so resolve them relative to this file rather than the install dir — the
+# extension may run from BundledExtensions where INSTALLED_EXT_ROOT is empty.
+_HOOKS_DIR = pathlib.Path(__file__).resolve().parent.parent / "hooks"
+DEFAULT_CC_HOOK_SCRIPT = str(_HOOKS_DIR / "cc-event-hook.sh")
+DEFAULT_CODEX_HOOK_SCRIPT = str(_HOOKS_DIR / "codex-notify-hook.sh")
 CC_HOOK_SCRIPT = (
     os.environ.get("AGENTS_STATUS_CC_HOOK_SCRIPT") or
     os.environ.get("CC_STATUS_HOOK_SCRIPT") or
@@ -86,7 +90,7 @@ CC_SETTINGS_PATH = pathlib.Path.home() / ".claude" / "settings.json"
 CC_HOOK_MARKER = "# cc-status-hook"
 
 # Panda Agent uses a Claude Code-compatible hook format in ~/.panda/settings.json.
-DEFAULT_PANDA_HOOK_SCRIPT = str(INSTALLED_EXT_ROOT / "hooks" / "panda-event-hook.sh")
+DEFAULT_PANDA_HOOK_SCRIPT = str(_HOOKS_DIR / "panda-event-hook.sh")
 PANDA_HOOK_SCRIPT = (
     os.environ.get("AGENTS_STATUS_PANDA_HOOK_SCRIPT") or
     DEFAULT_PANDA_HOOK_SCRIPT
