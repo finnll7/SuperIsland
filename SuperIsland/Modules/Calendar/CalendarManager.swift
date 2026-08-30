@@ -36,6 +36,9 @@ final class CalendarManager: ObservableObject {
     @Published var selectedDate: Date = Date()
     @Published var selectedDateEvents: [EKEvent] = []
     @Published var upcomingWeekEvents: [(date: Date, events: [EKEvent])] = []
+    /// 下一个即将到来（不限于今天）的事件。今天有剩余事件时与 nextEvent 相同，
+    /// 否则取未来（明天起 lookaheadDays 内）最早的事件。
+    @Published var nextUpcomingEvent: EKEvent? = nil
     @Published var calendarSourceGroups: [CalendarSourceGroup] = []
     @Published var hideBirthdays: Bool = UserDefaults.standard.bool(forKey: "calendar.hideBirthdays") {
         didSet {
@@ -393,6 +396,8 @@ final class CalendarManager: ObservableObject {
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 let visibleEvents = self.visibleEvents(from: allEvents)
+                // 未来的下一个事件（最早开始的未来事件）
+                self.nextUpcomingEvent = visibleEvents.first
                 var grouped: [(date: Date, events: [EKEvent])] = []
                 var currentDay: Date?
                 var currentEvents: [EKEvent] = []

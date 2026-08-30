@@ -14,7 +14,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var islandWindowController: IslandWindowController?
     private var onboardingWindowController: OnboardingWindowController?
     private var updateWindowController: UpdateWindowController?
-    private var updateCancellable: AnyCancellable?
     private var statusItem: NSStatusItem?
     private var menuBarDefaultsObserver: NSObjectProtocol?
     private var powerStateObserver: NSObjectProtocol?
@@ -151,31 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         rebuildStatusMenu()
         state.refreshEnergyState()
 
-        UpdateChecker.shared.checkIfDue()
-        observeUpdateState()
-    }
-
-    private func observeUpdateState() {
-        updateCancellable = UpdateChecker.shared.$checkState
-            .compactMap { state -> (String, URL, URL?)? in
-                if case .updateAvailable(let version, let releaseURL, let downloadURL) = state {
-                    return (version, releaseURL, downloadURL)
-                }
-                return nil
-            }
-            .first()
-            .receive(on: RunLoop.main)
-            .sink { [weak self] version, releaseURL, downloadURL in
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    self?.showUpdateDialog(version: version, releaseURL: releaseURL, downloadURL: downloadURL)
-                }
-            }
-    }
-
-    private func showUpdateDialog(version: String, releaseURL: URL, downloadURL: URL?) {
-        let controller = UpdateWindowController(version: version, releaseURL: releaseURL, downloadURL: downloadURL)
-        updateWindowController = controller
-        controller.show()
+        // 更新检查与自动更新已按需关闭（本地开发使用，不自动联网检查更新）
     }
 
     private func registerURLHandler() {

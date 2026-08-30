@@ -97,6 +97,9 @@ PANDA_HOOK_SCRIPT = (
 )
 PANDA_SETTINGS_PATH = pathlib.Path.home() / ".panda" / "settings.json"
 PANDA_HOOK_MARKER = "# panda-status-hook"
+# Panda's PermissionRequest hook (AskUserQuestion) mirrors Claude's format.
+PANDA_PERMISSION_HOOK_URL = f"http://127.0.0.1:{PORT}/hooks/permission"
+PANDA_PERMISSION_HOOK_TIMEOUT = int(os.environ.get("AGENTS_STATUS_PANDA_PERMISSION_HTTP_TIMEOUT", "600"))
 
 CODEX_CONFIG_PATH = pathlib.Path.home() / ".codex" / "config.toml"
 CODEX_HOOKS_PATH = pathlib.Path.home() / ".codex" / "hooks.json"
@@ -1583,6 +1586,10 @@ def _panda_is_our_group(group):
                 return True
             if f"127.0.0.1:{PORT}/event" in cmd:
                 return True
+            # HTTP hooks (PermissionRequest) — match on our bridge URL.
+            url = h.get("url") or ""
+            if f"127.0.0.1:{PORT}/hooks/" in url:
+                return True
     except Exception:
         pass
     return False
@@ -1619,6 +1626,20 @@ def panda_install():
             hooks[event_name] = bucket
         bucket.append({"hooks": [{"type": "command", "command": command}]})
         installed.append(event_name)
+    # Blocking PermissionRequest hook — lets the user approve AskUserQuestion
+    # prompts right from the island instead of the terminal.
+    bucket = hooks.setdefault("PermissionRequest", [])
+    if not isinstance(bucket, list):
+        bucket = []
+        hooks["PermissionRequest"] = bucket
+    bucket.append({
+        "hooks": [{
+            "type": "http",
+            "url": PANDA_PERMISSION_HOOK_URL,
+            "timeout": PANDA_PERMISSION_HOOK_TIMEOUT,
+        }]
+    })
+    installed.append("PermissionRequest")
     _save_panda_settings(d)
     return installed
 
@@ -1656,7 +1677,7 @@ def panda_status():
     for event_name, bucket in hooks.items():
         if isinstance(bucket, list) and any(_panda_is_our_group(g) for g in bucket):
             present.append(event_name)
-    primary = {"UserPromptSubmit", "PreToolUse", "Stop", "SessionEnd"}
+    primary = {"UserPromptSubmit", "PreToolUse", "Stop", "SessionEnd", "PermissionRequest"}
     return {"installed": primary.issubset(set(present)), "events": sorted(present)}
 
 
@@ -2452,14 +2473,28 @@ def _clear_session_permission_tag(permission_id):
                 s.pop("pending_permission_id", None)
 
 
+def _agent_for_session(session_id):
+    """Resolve the agent for a hook payload. PermissionRequest hooks don't
+    carry an agent field; look it up from the tracked sessions by session_id
+    (Claude/Codex/Panda), defaulting to Claude for legacy callers."""
+    if not session_id:
+        return "Claude"
+    with _lock:
+        for (agent, sid), s in _sessions.items():
+            if sid == session_id or s.get("session_id") == session_id:
+                return agent
+    return "Claude"
+
+
 def _handle_permission_hook(body):
     """Blocking PermissionRequest hook handler. For AskUserQuestion, we suspend
     the hook thread until the extension calls /permission/resolve with the
     chosen option. Any other tool is waved through with `allow` so regular
-    Claude tool permissions keep their existing behaviour."""
+    agent tool permissions keep their existing behaviour."""
     tool_name = (body.get("tool_name") or "").strip()
     session_id = body.get("session_id") or body.get("sessionId") or ""
     tool_input = body.get("tool_input") or {}
+    agent = _agent_for_session(session_id)
 
     if tool_name != "AskUserQuestion":
         return {
@@ -2483,7 +2518,7 @@ def _handle_permission_hook(body):
     created_at = time.time()
     entry = {
         "session_id": session_id,
-        "agent": "Claude",
+        "agent": agent,
         "tool_name": tool_name,
         "tool_input": tool_input,
         "questions": questions,
@@ -2494,7 +2529,7 @@ def _handle_permission_hook(body):
     with _pending_permissions_lock:
         _pending_permissions[permission_id] = entry
 
-    _set_session_waiting_for_permission("Claude", session_id, permission_id, created_at)
+    _set_session_waiting_for_permission(agent, session_id, permission_id, created_at)
 
     try:
         signalled = event.wait(PERMISSION_HOOK_TIMEOUT)
