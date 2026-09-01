@@ -419,9 +419,16 @@ function recomputeTop() {
     currentState = "Idle";
     return;
   }
-  // If any session is currently in the green "Done" window, surface that in the
-  // compact view so a glance confirms a recently-finished task. Otherwise fall
-  // back to the server's priority-sorted top session.
+  // 优先反映当前活跃会话：只要有会话处于 Working/Waiting/Error，就显示该
+  // 状态。否则其他会话的 Done 会覆盖正在进行的任务，误报"已完成"。
+  for (var i = 0; i < sessions.length; i++) {
+    var st = effectiveState(sessions[i]);
+    if (st === "Working" || st === "Waiting" || st === "Error") {
+      currentState = st;
+      return;
+    }
+  }
+  // 无活跃会话时，才显示最近完成的 Done 状态。
   for (var i = 0; i < sessions.length; i++) {
     if (effectiveState(sessions[i]) === "Done") {
       currentState = "Done";
