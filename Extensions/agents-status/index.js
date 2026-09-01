@@ -414,6 +414,21 @@ function settingBool(key, fallback) {
 }
 
 // --- Derived top-session -------------------------------------------------
+function activeSessions() {
+  var out = [];
+  for (var i = 0; i < sessions.length; i++) {
+    if (effectiveState(sessions[i]) !== "Idle") out.push(sessions[i]);
+  }
+  return out;
+}
+
+function islandIsExpanded() {
+  try {
+    var st = SuperIsland.island.state;
+    return st === "expanded" || st === "fullExpanded";
+  } catch (e) { return false; }
+}
+
 function recomputeTop() {
   if (!sessions || sessions.length === 0) {
     currentState = "Idle";
@@ -606,7 +621,11 @@ function stopPolling() {
 }
 function scheduleNextPoll() {
   if (pollTimer !== null) { clearTimeout(pollTimer); pollTimer = null; }
-  var interval = hasActiveSessions() ? POLL_INTERVAL_MS : IDLE_POLL_INTERVAL_MS;
+  // 展开状态或存在活跃会话时保持 800ms 高频轮询，让展开内容及时刷新；
+  // 折叠且全部空闲时才降到 5s 以省电。
+  var interval = (hasActiveSessions() || islandIsExpanded())
+    ? POLL_INTERVAL_MS
+    : IDLE_POLL_INTERVAL_MS;
   pollTimer = setTimeout(function () {
     pollTimer = null;
     fetchState();
@@ -885,22 +904,26 @@ SuperIsland.registerModule({
 
   // -- expanded (drawer, ~360×80) --
   expanded: function () {
-    if (!bridgeOnline || sessions.length === 0) {
+    if (!bridgeOnline) {
+      return heroView();
+    }
+    var list = activeSessions();
+    if (list.length === 0) {
       return heroView();
     }
     // If any session has a pending AskUserQuestion, surface that first —
     // the user needs to act on it before anything else matters.
-    for (var q = 0; q < sessions.length; q++) {
-      var card = questionCard(sessions[q], 22);
+    for (var q = 0; q < list.length; q++) {
+      var card = questionCard(list[q], 22);
       if (card) return card;
     }
     var rows = [];
-    var n = Math.min(sessions.length, 2);
+    var n = Math.min(list.length, 2);
     for (var i = 0; i < n; i++) {
-      rows.push(sessionRow(sessions[i], 22, false, isSessionFocusable(sessions[i])));
+      rows.push(sessionRow(list[i], 22, false, isSessionFocusable(list[i])));
     }
-    if (sessions.length > 2) {
-      rows.push(View.text("+" + (sessions.length - 2) + " 更多", {
+    if (list.length > 2) {
+      rows.push(View.text("+" + (list.length - 2) + " 更多", {
         style: "footnote", color: WHITE_40
       }));
     }
@@ -909,22 +932,26 @@ SuperIsland.registerModule({
 
   // -- fullExpanded (detail, 400×200) --
   fullExpanded: function () {
-    if (!bridgeOnline || sessions.length === 0) {
+    if (!bridgeOnline) {
+      return heroView();
+    }
+    var list = activeSessions();
+    if (list.length === 0) {
       return heroView();
     }
     var rows = [];
     // Lift any pending AskUserQuestion cards to the top of the detail list.
-    for (var q = 0; q < sessions.length; q++) {
-      var card = questionCard(sessions[q], 24);
+    for (var q = 0; q < list.length; q++) {
+      var card = questionCard(list[q], 24);
       if (card) {
         rows.push(card);
         rows.push(View.divider());
       }
     }
-    for (var i = 0; i < sessions.length; i++) {
-      if (sessionPendingPermission(sessions[i])) continue; // already surfaced above
-      rows.push(sessionRow(sessions[i], 24, true, isSessionFocusable(sessions[i])));
-      if (i < sessions.length - 1) rows.push(View.divider());
+    for (var i = 0; i < list.length; i++) {
+      if (sessionPendingPermission(list[i])) continue; // already surfaced above
+      rows.push(sessionRow(list[i], 24, true, isSessionFocusable(list[i])));
+      if (i < list.length - 1) rows.push(View.divider());
     }
     return View.scroll(
       View.vstack(rows, { spacing: 6, align: "leading" }),
