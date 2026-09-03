@@ -54,10 +54,11 @@ WORKING_TIMEOUT = float(
 # interrupt) and auto-flip to Idle. Generous enough that long-running tool
 # calls don't false-trip.
 CLAUDE_IDLE_GRACE = float(os.environ.get("AGENTS_STATUS_CLAUDE_IDLE_GRACE", "180"))
-# Panda tasks can sit quietly for long stretches between hook events (LLM
-# thinking, long tool waits). Use a generous grace so an in-progress task is
-# not decayed to Idle — and the island doesn't falsely report "Done".
-PANDA_IDLE_GRACE = float(os.environ.get("AGENTS_STATUS_PANDA_IDLE_GRACE", "240"))
+# Panda runs as a persistent process. A finished task stops sending hook
+# events; decay to Idle after this silence so the island yields back to
+# other modules. Long enough to cover LLM thinking gaps, short enough that
+# a stale Working doesn't linger after a task ends.
+PANDA_IDLE_GRACE = float(os.environ.get("AGENTS_STATUS_PANDA_IDLE_GRACE", "90"))
 ERROR_DISPLAY_SECONDS = float(os.environ.get("AGENTS_STATUS_ERROR_DISPLAY_SECONDS", "45"))
 SESSION_TTL_DEFAULT = float(os.environ.get("AGENTS_STATUS_SESSION_TTL", "1800"))  # 30 min
 CODEX_SCAN_INTERVAL = float(os.environ.get("AGENTS_STATUS_CODEX_SCAN_INTERVAL", "1.0"))
@@ -684,23 +685,15 @@ def _decay_working(now):
                     continue
                 s["state"] = "Idle"
                 continue
-        # Panda mirrors Claude: an in-progress task may pause between hook
-        # events (LLM thinking / long tool calls). Keep it Working as long as
-        # the process is alive and either hooks or the transcript are recent.
+        # Panda mirrors the event-driven model but uses hook-silence decay:
+        # a task in progress keeps emitting hooks; when it finishes, silence
+        # after PANDA_IDLE_GRACE flips the session to Idle so the island
+        # shows Done briefly then yields back to other modules. Transcript
+        # mtime is unreliable for Panda (persistent process), so use hooks.
         if s.get("agent") == "Panda":
-            pid = s.get("pid")
-            if pid and _pid_alive(pid):
-                transcript = s.get("transcript_path") or ""
-                last_activity = s["updated_at"]
-                if transcript:
-                    try:
-                        last_activity = max(last_activity, os.path.getmtime(transcript))
-                    except OSError:
-                        pass
-                if (now - last_activity) <= PANDA_IDLE_GRACE:
-                    continue
+            if (now - s["updated_at"]) > PANDA_IDLE_GRACE:
                 s["state"] = "Idle"
-                continue
+            continue
         if (now - s["updated_at"]) > WORKING_TIMEOUT:
             s["state"] = "Idle"
 
