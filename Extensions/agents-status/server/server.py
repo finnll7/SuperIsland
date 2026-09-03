@@ -54,6 +54,10 @@ WORKING_TIMEOUT = float(
 # interrupt) and auto-flip to Idle. Generous enough that long-running tool
 # calls don't false-trip.
 CLAUDE_IDLE_GRACE = float(os.environ.get("AGENTS_STATUS_CLAUDE_IDLE_GRACE", "180"))
+# Panda tasks can sit quietly for long stretches between hook events (LLM
+# thinking, long tool waits). Use a generous grace so an in-progress task is
+# not decayed to Idle — and the island doesn't falsely report "Done".
+PANDA_IDLE_GRACE = float(os.environ.get("AGENTS_STATUS_PANDA_IDLE_GRACE", "240"))
 ERROR_DISPLAY_SECONDS = float(os.environ.get("AGENTS_STATUS_ERROR_DISPLAY_SECONDS", "45"))
 SESSION_TTL_DEFAULT = float(os.environ.get("AGENTS_STATUS_SESSION_TTL", "1800"))  # 30 min
 CODEX_SCAN_INTERVAL = float(os.environ.get("AGENTS_STATUS_CODEX_SCAN_INTERVAL", "1.0"))
@@ -677,6 +681,23 @@ def _decay_working(now):
                     except OSError:
                         pass
                 if (now - last_activity) <= CLAUDE_IDLE_GRACE:
+                    continue
+                s["state"] = "Idle"
+                continue
+        # Panda mirrors Claude: an in-progress task may pause between hook
+        # events (LLM thinking / long tool calls). Keep it Working as long as
+        # the process is alive and either hooks or the transcript are recent.
+        if s.get("agent") == "Panda":
+            pid = s.get("pid")
+            if pid and _pid_alive(pid):
+                transcript = s.get("transcript_path") or ""
+                last_activity = s["updated_at"]
+                if transcript:
+                    try:
+                        last_activity = max(last_activity, os.path.getmtime(transcript))
+                    except OSError:
+                        pass
+                if (now - last_activity) <= PANDA_IDLE_GRACE:
                     continue
                 s["state"] = "Idle"
                 continue
