@@ -5,7 +5,10 @@ struct CalendarCompactView: View {
     @ObservedObject private var manager = CalendarManager.shared
 
     var body: some View {
-        HStack(spacing: 6) {
+        // 引用 currentTime，使紧凑视图随日历时钟（每 30 秒）自动刷新日期/倒计时。
+        let _ = manager.currentTime
+
+        return HStack(spacing: 6) {
             if let event = manager.nextEvent, let countdown = manager.nextEventCountdown {
                 Text(event.title ?? "事件")
                     .font(.system(size: 11, weight: .medium))

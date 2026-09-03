@@ -26,7 +26,13 @@ struct CalendarExpandedView: View {
     // MARK: - Medium Expanded (Previous Behavior)
 
     private var mediumExpandedSummary: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        // 引用 manager.currentTime 使本视图随日历时钟定期刷新
+        //（日期标题、倒计时自动更新为当天/实时）。
+        let _ = manager.currentTime
+
+        let displayEvent = manager.nextEvent ?? manager.nextUpcomingEvent
+
+        return VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(headerDate)
                     .font(.system(size: 14, weight: .bold))
@@ -38,7 +44,7 @@ struct CalendarExpandedView: View {
             }
 
             Group {
-                if let event = manager.nextEvent {
+                if let event = displayEvent {
                     HStack(spacing: 8) {
                         Circle()
                             .fill(Color(cgColor: event.calendar.cgColor))
@@ -51,11 +57,9 @@ struct CalendarExpandedView: View {
 
                         Spacer()
 
-                        if let countdown = manager.nextEventCountdown {
-                            Text(countdown)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.white.opacity(0.7))
-                        }
+                        Text(displayCountdown(for: event))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
 
                         if let url = manager.joinURL(for: event) {
                             Button(action: { NSWorkspace.shared.open(url) }) {
@@ -71,12 +75,21 @@ struct CalendarExpandedView: View {
                         }
                     }
                 } else {
-                    Text("今天暂无更多事件")
+                    Text("暂无事件")
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.5))
                 }
             }
         }
+    }
+
+    /// 今天的倒计时由 CalendarManager 计算；未来事件显示日期（明天/后天/M月d日）。
+    private func displayCountdown(for event: EKEvent) -> String {
+        if manager.nextEvent?.eventIdentifier == event.eventIdentifier,
+           let countdown = manager.nextEventCountdown {
+            return countdown
+        }
+        return upcomingDayLabel(for: event.startDate)
     }
 
     // MARK: - Full Expanded (Calendar Grid + Events + Upcoming)
@@ -518,8 +531,9 @@ struct CalendarExpandedView: View {
 
     private var headerDate: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMMM d"
-        return formatter.string(from: Date())
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M月d日 EEEE"
+        return formatter.string(from: manager.currentTime)
     }
 
     private static let monthTitleFormatter: DateFormatter = {

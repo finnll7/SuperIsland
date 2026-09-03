@@ -39,6 +39,11 @@ final class CalendarManager: ObservableObject {
     /// 下一个即将到来（不限于今天）的事件。今天有剩余事件时与 nextEvent 相同，
     /// 否则取未来（明天起 lookaheadDays 内）最早的事件。
     @Published var nextUpcomingEvent: EKEvent? = nil
+    /// 定期更新的当前时间，驱动灵动岛日历视图的日期/倒计时自动刷新。
+    @Published var currentTime: Date = Date()
+    /// 最近已提醒过的事件，避免同一事件重复弹提醒。
+    private var lastNotifiedEvent: EKEvent?
+    private var clockTimer: Timer?
     @Published var calendarSourceGroups: [CalendarSourceGroup] = []
     @Published var hideBirthdays: Bool = UserDefaults.standard.bool(forKey: "calendar.hideBirthdays") {
         didSet {
@@ -95,9 +100,11 @@ final class CalendarManager: ObservableObject {
             registerRefresh()
             observeStoreChanges()
             prefetchDatesWithEventsIfNeeded()
+            startClockTimer()
         } else {
             clearEvents()
             stopRefresh()
+            stopClockTimer()
         }
     }
 
@@ -231,8 +238,48 @@ final class CalendarManager: ObservableObject {
                 self.schedulePreEventNotification()
                 self.fetchEventsForSelectedDate()
                 self.fetchUpcomingWeekEvents()
+                self.checkUpcomingReminders()
             }
         }
+    }
+
+    // MARK: - Clock & Event Reminders
+
+    /// 每 30 秒发布一次当前时间：驱动日历视图日期/倒计时自动刷新，
+    /// 同时检查是否有事件进入了提醒窗口（事件前 preEventMinutes 分钟）。
+    private func startClockTimer() {
+        guard clockTimer == nil else { return }
+        currentTime = Date()
+        clockTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.currentTime = Date()
+                self.checkUpcomingReminders()
+            }
+        }
+        clockTimer?.tolerance = 5
+    }
+
+    private func stopClockTimer() {
+        clockTimer?.invalidate()
+        clockTimer = nil
+        lastNotifiedEvent = nil
+    }
+
+    /// 在 preEventMinutes 窗口内的最近未来事件。
+    private var nearestUpcomingEvent: EKEvent? {
+        if let next = nextEvent, next.startDate > Date() { return next }
+        return nextUpcomingEvent
+    }
+
+    /// 检查是否有事件进入提醒窗口，若进入则弹出日历 HUD（每个事件只提醒一次）。
+    private func checkUpcomingReminders() {
+        guard let next = nearestUpcomingEvent else { return }
+        let minutesUntil = next.startDate.timeIntervalSinceNow / 60
+        guard minutesUntil >= 0, minutesUntil <= Double(preEventMinutes) else { return }
+        if lastNotifiedEvent?.eventIdentifier == next.eventIdentifier { return }
+        lastNotifiedEvent = next
+        AppState.shared.showHUD(module: .calendar, autoDismiss: false)
     }
 
     // MARK: - Pre-Event Timer
@@ -330,15 +377,15 @@ final class CalendarManager: ObservableObject {
     var nextEventCountdown: String? {
         guard let next = nextEvent else { return nil }
         let interval = next.startDate.timeIntervalSinceNow
-        guard interval > 0 else { return "now" }
+        guard interval > 0 else { return "现在" }
 
         let minutes = Int(interval / 60)
         if minutes < 60 {
-            return "in \(minutes) min"
+            return "\(minutes) 分钟后"
         }
         let hours = minutes / 60
         let remainingMinutes = minutes % 60
-        return "in \(hours)h \(remainingMinutes)m"
+        return remainingMinutes > 0 ? "\(hours) 小时 \(remainingMinutes) 分钟后" : "\(hours) 小时后"
     }
 
     func joinURL(for event: EKEvent) -> URL? {
@@ -420,6 +467,7 @@ final class CalendarManager: ObservableObject {
 
                 self.upcomingWeekEvents = grouped
                 self.prefetchDatesWithEventsIfNeeded()
+                self.checkUpcomingReminders()
             }
         }
     }
@@ -463,11 +511,13 @@ final class CalendarManager: ObservableObject {
         calendarSourceGroups = []
         todayEvents = []
         nextEvent = nil
+        nextUpcomingEvent = nil
         selectedDateEvents = []
         upcomingWeekEvents = []
         datesWithEvents = []
         preEventTimer?.invalidate()
         preEventTimer = nil
+        stopClockTimer()
     }
 
     private func visibleEvents(from events: [EKEvent]) -> [EKEvent] {
