@@ -59,6 +59,10 @@ CLAUDE_IDLE_GRACE = float(os.environ.get("AGENTS_STATUS_CLAUDE_IDLE_GRACE", "180
 # other modules. Long enough to cover LLM thinking gaps, short enough that
 # a stale Working doesn't linger after a task ends.
 PANDA_IDLE_GRACE = float(os.environ.get("AGENTS_STATUS_PANDA_IDLE_GRACE", "90"))
+# Panda fires Stop at subtask boundaries too (the main agent pauses while a
+# SubWork subagent runs). Don't flip to Idle immediately — hold Working and
+# only confirm the stop if no further activity arrives within this window.
+PANDA_STOP_CONFIRM_DELAY = float(os.environ.get("AGENTS_STATUS_PANDA_STOP_CONFIRM_DELAY", "25"))
 ERROR_DISPLAY_SECONDS = float(os.environ.get("AGENTS_STATUS_ERROR_DISPLAY_SECONDS", "45"))
 SESSION_TTL_DEFAULT = float(os.environ.get("AGENTS_STATUS_SESSION_TTL", "1800"))  # 30 min
 CODEX_SCAN_INTERVAL = float(os.environ.get("AGENTS_STATUS_CODEX_SCAN_INTERVAL", "1.0"))
@@ -688,10 +692,17 @@ def _decay_working(now):
         # Panda mirrors the event-driven model but uses hook-silence decay:
         # a task in progress keeps emitting hooks; when it finishes, silence
         # after PANDA_IDLE_GRACE flips the session to Idle so the island
-        # shows Done briefly then yields back to other modules. Transcript
-        # mtime is unreliable for Panda (persistent process), so use hooks.
+        # shows Done briefly then yields back to other modules.
+        # Stop events first go through a confirm window (PANDA_STOP_CONFIRM_DELAY):
+        # subtask boundaries fire Stop while the main task keeps going, so only
+        # a Stop that stays quiet for the full window is treated as task end.
         if s.get("agent") == "Panda":
-            if (now - s["updated_at"]) > PANDA_IDLE_GRACE:
+            pending = s.get("stop_pending_at")
+            if pending is not None:
+                if now - pending > PANDA_STOP_CONFIRM_DELAY:
+                    s["state"] = "Idle"
+                    s["stop_pending_at"] = None
+            elif (now - s["updated_at"]) > PANDA_IDLE_GRACE:
                 s["state"] = "Idle"
             continue
         if (now - s["updated_at"]) > WORKING_TIMEOUT:
@@ -1330,6 +1341,19 @@ def _apply_event(data):
         turn_active = existing.get("turn_active", False)
         turn_started_at = existing.get("turn_started_at")
         error_expires_at = existing.get("error_expires_at")
+        stop_pending_at = existing.get("stop_pending_at")
+
+        # Panda fires Stop at subtask boundaries as well as real task end (the
+        # main agent pauses while SubWork subagents run). Hold Working on Stop
+        # and let the decay loop confirm it only after the confirm window
+        # passes with no further activity — otherwise every finished subtask
+        # would flash "Done" on the island.
+        if agent == "Panda":
+            if state == "Idle" and existing.get("state") == "Working":
+                stop_pending_at = now
+                effective_state = "Working"
+            elif state in ("Working", "Waiting"):
+                stop_pending_at = None
 
         if agent == "Codex":
             if event == "UserPromptSubmit":
@@ -1391,6 +1415,7 @@ def _apply_event(data):
             "turn_active": turn_active,
             "turn_started_at": turn_started_at,
             "last_event": event or existing.get("last_event"),
+            "stop_pending_at": stop_pending_at,
             "last_assistant_message": (
                 incoming_last_assistant_message
                 if "last_assistant_message" in data
@@ -1582,6 +1607,9 @@ def _panda_canonical_events():
         "PreToolUse":          _panda_event_cmd("Working"),
         "PostToolUse":         _panda_event_cmd("Auto"),
         "PostToolUseFailure":  _panda_event_cmd("ToolFail"),
+        # SubWork subagents: their activity means the task is still running
+        # (keeps the session Working while the main agent waits quietly).
+        "SubagentStart":       _panda_event_cmd("Working"),
         "Notification":        _panda_event_cmd("Waiting"),
         "Stop":                _panda_event_cmd("Idle"),
         "SessionEnd":          _panda_event_cmd("Ended"),
