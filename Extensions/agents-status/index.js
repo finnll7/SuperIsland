@@ -47,6 +47,8 @@ var prevSessionStates = {};  // key "agent|session_id" -> last-seen state
 var soundsSeeded = false;    // skip sounds on the first snapshot after boot
 var doneUntil = {};          // key "agent|session_id" -> ms timestamp; while now < value, show Done (green) instead of Idle
 var DONE_DURATION_MS = 30 * 1000; // green tick sticks for 30s after a session finishes, unless it starts working again
+var PANDA_DONE_DEBOUNCE_MS = 20 * 1000; // panda works run hook-silent; debounce Done so bridge flaps don't false-notify
+var pandaIdleSince = {};     // key "agent|session_id" -> ms when the panda session left Working (Done debounce in progress)
 var seenPermissions = {};    // permission_id -> true; used to pop the island once per new AskUserQuestion
 
 // --- Colors --------------------------------------------------------------
@@ -501,11 +503,22 @@ function detectSoundTransitions(list) {
     if (oldState === newState) continue;
     if (newState === "Working" && oldState !== "Working") {
       sawStart = true;
-      // Entering Working clears any stale Done glow from a prior run.
+      // Entering Working clears any stale Done glow from a prior run and
+      // cancels any pending panda Done debounce (the task resumed).
       delete doneUntil[key];
+      delete pandaIdleSince[key];
     } else if (oldState === "Working" && newState !== "Working") {
-      sawStop = true;
-      doneUntil[key] = now + DONE_DURATION_MS;
+      if (s.agent === "Panda" && s.idle_reason !== "stop_confirmed") {
+        // Panda desktop works execute hook-silent; the bridge can flap
+        // Working→Idle while a long tool pauses transcript writes. Hold the
+        // Done signal until the Idle sticks for the debounce window. A
+        // stop_confirmed Idle already waited out the server-side confirm
+        // window, so it fires immediately.
+        if (!pandaIdleSince[key]) pandaIdleSince[key] = now;
+      } else {
+        sawStop = true;
+        doneUntil[key] = now + DONE_DURATION_MS;
+      }
     }
     if (newState === "Waiting" && oldState !== "Waiting") {
       sawWaiting = true;
@@ -518,6 +531,25 @@ function detectSoundTransitions(list) {
       if (nextMap[oldKey] === undefined && prevSessionStates[oldKey] === "Working") {
         sawStop = true;
         doneUntil[oldKey] = now + DONE_DURATION_MS;
+      }
+    }
+  }
+  // Panda Done debounce: announce completion only if the session has stayed
+  // non-Working for the full window. A fresh transcript write flips it back
+  // to Working on the bridge side within the window and silently cancels.
+  if (soundsSeeded) {
+    for (var pkey in pandaIdleSince) {
+      if (!Object.prototype.hasOwnProperty.call(pandaIdleSince, pkey)) continue;
+      var pState = nextMap[pkey];
+      if (pState === undefined || pState === "Working") {
+        // Session gone (SessionEnd handled above) or task resumed: cancel.
+        delete pandaIdleSince[pkey];
+        continue;
+      }
+      if (now - pandaIdleSince[pkey] >= PANDA_DONE_DEBOUNCE_MS) {
+        sawStop = true;
+        doneUntil[pkey] = now + DONE_DURATION_MS;
+        delete pandaIdleSince[pkey];
       }
     }
   }

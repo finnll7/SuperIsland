@@ -63,6 +63,13 @@ PANDA_IDLE_GRACE = float(os.environ.get("AGENTS_STATUS_PANDA_IDLE_GRACE", "90"))
 # SubWork subagent runs). Don't flip to Idle immediately — hold Working and
 # only confirm the stop if no further activity arrives within this window.
 PANDA_STOP_CONFIRM_DELAY = float(os.environ.get("AGENTS_STATUS_PANDA_STOP_CONFIRM_DELAY", "25"))
+# Desktop task-lane works (panda 桌面版任务通道) execute with ZERO hook
+# events — their tool calls only append to the session transcript. Treat a
+# freshly-written transcript as proof the task is still alive. Observed
+# inter-write gaps run ~3 min; single long tool calls can go longer, so this
+# window is generous. Real completions are exempt from revival (stop_confirmed),
+# so a generous window does not delay Done — it only guards silence-decay.
+PANDA_TRANSCRIPT_STALE = float(os.environ.get("AGENTS_STATUS_PANDA_TRANSCRIPT_STALE", "600"))
 ERROR_DISPLAY_SECONDS = float(os.environ.get("AGENTS_STATUS_ERROR_DISPLAY_SECONDS", "45"))
 SESSION_TTL_DEFAULT = float(os.environ.get("AGENTS_STATUS_SESSION_TTL", "1800"))  # 30 min
 CODEX_SCAN_INTERVAL = float(os.environ.get("AGENTS_STATUS_CODEX_SCAN_INTERVAL", "1.0"))
@@ -646,10 +653,40 @@ def _codex_transcript_interrupted(transcript_path, turn_id):
     return True
 
 
+def _panda_transcript_mtime(path):
+    """mtime of a panda session transcript, or None if unavailable."""
+    if not path:
+        return None
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return None
+
+
 def _decay_working(now):
     # Auto-roll Working sessions to Idle after inactivity. Leaves title/cwd intact.
     for key, s in _sessions.items():
         if s["state"] != "Working":
+            # Desktop task-lane works run with zero hooks; if their transcript
+            # is being written AFTER the session went Idle — e.g. a long quiet
+            # tool run was mistaken for completion, or a bridge restart
+            # reloaded the session as Idle while the work kept running — the
+            # task is alive: revive it. idle_at + small epsilon guards the
+            # decay race (the final transcript write can land moments before
+            # the decay flips the state, as in the stop-confirmed path).
+            if s.get("agent") == "Panda" and s.get("state") == "Idle":
+                mtime = _panda_transcript_mtime(s.get("transcript_path"))
+                idle_at = s.get("idle_at") or 0
+                if (
+                    mtime is not None
+                    and (now - mtime) <= PANDA_TRANSCRIPT_STALE
+                    and mtime > idle_at + 5
+                ):
+                    s["state"] = "Working"
+                    s["updated_at"] = max(s.get("updated_at", 0), mtime)
+                    s["stop_pending_at"] = None
+                    s["idle_reason"] = None
+                    s["idle_at"] = None
             continue
         if s.get("agent") == "Codex" and s.get("turn_active"):
             transcript = s.get("transcript_path") or ""
@@ -689,21 +726,37 @@ def _decay_working(now):
                     continue
                 s["state"] = "Idle"
                 continue
-        # Panda mirrors the event-driven model but uses hook-silence decay:
-        # a task in progress keeps emitting hooks; when it finishes, silence
-        # after PANDA_IDLE_GRACE flips the session to Idle so the island
-        # shows Done briefly then yields back to other modules.
-        # Stop events first go through a confirm window (PANDA_STOP_CONFIRM_DELAY):
-        # subtask boundaries fire Stop while the main task keeps going, so only
-        # a Stop that stays quiet for the full window is treated as task end.
+        # Panda has two activity signals: hook events (regular conversations)
+        # and the session transcript (desktop task-lane works execute with
+        # ZERO hooks — tool calls only append to the transcript).
+        # Precedence:
+        #   1. A pending Stop outranks transcript freshness — the final
+        #      transcript write lands right around the Stop, so freshness
+        #      must not block end confirmation. Confirmation waits for
+        #      PANDA_STOP_CONFIRM_DELAY of quiet counted from the LATER of
+        #      (Stop time, last transcript write): post-Stop writes mean the
+        #      work is still finishing/subtask continuing.
+        #   2. No Stop + fresh transcript → hook-silent work running: hold
+        #      Working (updated_at tracks mtime).
+        #   3. Everything quiet past PANDA_IDLE_GRACE → Idle(silence),
+        #      revivable if the transcript resumes writing.
         if s.get("agent") == "Panda":
+            mtime = _panda_transcript_mtime(s.get("transcript_path"))
             pending = s.get("stop_pending_at")
             if pending is not None:
-                if now - pending > PANDA_STOP_CONFIRM_DELAY:
+                quiet_since = max(pending, mtime) if mtime is not None else pending
+                if now - quiet_since > PANDA_STOP_CONFIRM_DELAY:
                     s["state"] = "Idle"
                     s["stop_pending_at"] = None
+                    s["idle_reason"] = "stop_confirmed"
+                    s["idle_at"] = now
+            elif mtime is not None and (now - mtime) <= PANDA_TRANSCRIPT_STALE:
+                s["updated_at"] = max(s["updated_at"], mtime)
+                continue
             elif (now - s["updated_at"]) > PANDA_IDLE_GRACE:
                 s["state"] = "Idle"
+                s["idle_reason"] = "silence"
+                s["idle_at"] = now
             continue
         if (now - s["updated_at"]) > WORKING_TIMEOUT:
             s["state"] = "Idle"
@@ -1208,6 +1261,70 @@ def _resolve_warp_tab(session, warp_context):
     return dict(top_tab)
 
 
+# Bridge restarts kill in-memory session state, and hook-silent panda works
+# cannot re-announce themselves until their next hook event — so a restart
+# mid-work makes a running task vanish from the island. Persist the session
+# table and reload it on boot; the normal decay/revive logic then reconciles
+# state against reality (transcript mtimes, new hook events).
+_STATE_FILE = os.path.expanduser(
+    "~/Library/Caches/SuperIsland/agents-status-state.json"
+)
+_state_saved_at = 0.0
+_STATE_SAVE_INTERVAL = 5.0
+_STATE_MAX_AGE = 6 * 3600
+
+
+def _load_persisted_sessions():
+    try:
+        with open(_STATE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return
+    now = time.time()
+    loaded = {}
+    for s in data.get("sessions", []):
+        if not isinstance(s, dict):
+            continue
+        agent, sid = s.get("agent"), s.get("session_id")
+        if not agent or not sid:
+            continue
+        if s.get("state") in ("Ended", None):
+            continue
+        if now - float(s.get("updated_at") or 0) > _STATE_MAX_AGE:
+            continue
+        s.setdefault("synthetic", False)
+        loaded[(agent, sid)] = s
+    if not loaded:
+        return
+    with _lock:
+        for key, s in loaded.items():
+            _sessions.setdefault(key, s)
+
+
+def _maybe_persist_sessions(now):
+    global _state_saved_at
+    if now - _state_saved_at < _STATE_SAVE_INTERVAL:
+        return
+    _state_saved_at = now
+    try:
+        with _lock:
+            payload = [
+                dict(s)
+                for s in _sessions.values()
+                if s.get("state") != "Ended" and not s.get("synthetic")
+            ]
+        os.makedirs(os.path.dirname(_STATE_FILE), exist_ok=True)
+        tmp = _STATE_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(
+                {"saved_at": now, "sessions": payload},
+                f, ensure_ascii=False,
+            )
+        os.replace(tmp, _STATE_FILE)
+    except (OSError, ValueError):
+        pass
+
+
 def _snapshot(ttl):
     now = time.time()
     codex_candidates = _scan_codex_startup_candidates(now)
@@ -1256,6 +1373,7 @@ def _snapshot(ttl):
     else:
         legacy_state = "Idle"
         legacy_updated = now
+    _maybe_persist_sessions(now)
     return {
         "sessions": sessions,
         "state": legacy_state,
@@ -1342,6 +1460,7 @@ def _apply_event(data):
         turn_started_at = existing.get("turn_started_at")
         error_expires_at = existing.get("error_expires_at")
         stop_pending_at = existing.get("stop_pending_at")
+        idle_at = existing.get("idle_at")
 
         # Panda fires Stop at subtask boundaries as well as real task end (the
         # main agent pauses while SubWork subagents run). Hold Working on Stop
@@ -1354,6 +1473,13 @@ def _apply_event(data):
                 effective_state = "Working"
             elif state in ("Working", "Waiting"):
                 stop_pending_at = None
+                idle_at = None
+            elif state == "Idle":
+                # Direct Idle (SessionStart, or Stop on an already-idle
+                # session): stamp idle_at so the revival logic can tell
+                # post-idle transcript writes from the session's own
+                # creation/finalization writes.
+                idle_at = now
 
         if agent == "Codex":
             if event == "UserPromptSubmit":
@@ -1416,6 +1542,7 @@ def _apply_event(data):
             "turn_started_at": turn_started_at,
             "last_event": event or existing.get("last_event"),
             "stop_pending_at": stop_pending_at,
+            "idle_at": idle_at,
             "last_assistant_message": (
                 incoming_last_assistant_message
                 if "last_assistant_message" in data
@@ -2839,6 +2966,7 @@ def _handle_client(conn):
 
 
 def main():
+    _load_persisted_sessions()
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind(("127.0.0.1", PORT))
