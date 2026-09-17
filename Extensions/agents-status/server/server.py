@@ -1288,6 +1288,11 @@ def _load_persisted_sessions():
         agent, sid = s.get("agent"), s.get("session_id")
         if not agent or not sid:
             continue
+        # Normalize legacy lowercase "panda" (old hook fallback wrote it)
+        # so decay/revival protections apply after a restart too.
+        if agent.lower() == "panda":
+            agent = "Panda"
+            s["agent"] = "Panda"
         if s.get("state") in ("Ended", None):
             continue
         if now - float(s.get("updated_at") or 0) > _STATE_MAX_AGE:
@@ -1384,6 +1389,12 @@ def _snapshot(ttl):
 def _apply_event(data):
     state = data.get("state")
     agent = data.get("agent") or "Claude"
+    # Normalize legacy/variant casing ("panda" from the old hook fallback)
+    # so the Panda state machine (Stop confirm, transcript liveness,
+    # revival) always applies — case mismatches used to bypass it entirely
+    # and re-introduce false "Done" reports.
+    if agent.lower() == "panda":
+        agent = "Panda"
     session_id = data.get("session_id") or "default"
     event = data.get("event") or ""
     key = (agent, session_id)

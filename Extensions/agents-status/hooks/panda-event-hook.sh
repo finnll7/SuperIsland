@@ -32,12 +32,26 @@ AGENT_PID="$(find_agent_pid 2>/dev/null || true)"
 # source code, so we can't let json.load(sys.stdin) compete with it.
 HOOK_JSON=$(cat)
 
-payload=$(
-  STATE="$STATE" \
-  HOOK_JSON="$HOOK_JSON" \
-  TERM_PROGRAM="${TERM_PROGRAM:-}" \
-  AGENT_PID="${AGENT_PID:-}" \
-  /usr/bin/python3 - <<'PY' 2>/dev/null
+# Pick a working python3. /usr/bin/python3 is shimmed through the Xcode
+# SDK and hard-fails ("You have not agreed to the Xcode license") whenever
+# the license needs re-acceptance — prefer Homebrew interpreters first and
+# verify each candidate actually runs before using it.
+PY_BIN=""
+for cand in /opt/homebrew/bin/python3 /usr/local/bin/python3 /usr/bin/python3; do
+  if [ -x "$cand" ] && "$cand" -c 'import json, sqlite3' >/dev/null 2>&1; then
+    PY_BIN="$cand"
+    break
+  fi
+done
+
+payload=""
+if [ -n "$PY_BIN" ]; then
+  payload=$(
+    STATE="$STATE" \
+    HOOK_JSON="$HOOK_JSON" \
+    TERM_PROGRAM="${TERM_PROGRAM:-}" \
+    AGENT_PID="${AGENT_PID:-}" \
+    "$PY_BIN" - <<'PY' 2>/dev/null
 import json, os, sys
 try:
     d = json.loads(os.environ.get("HOOK_JSON") or "{}")
@@ -151,9 +165,31 @@ sys.stdout.write(json.dumps({
 }))
 PY
 )
+fi
 
+# Fallback when no python3 works (e.g. Xcode license prompt breaks every
+# interpreter). Extract the essentials with sed so the bridge still gets
+# agent=Panda + the real session_id — a degraded-but-correct report. The
+# bridge's Panda state machine (Stop confirm window, transcript liveness)
+# relies on agent/session_id, so NEVER fall back to a bare agent-only
+# payload: that creates a phantom session that skips all decay protection.
 if [ -z "${payload:-}" ]; then
-  payload="{\"state\":\"${STATE}\",\"agent\":\"panda\"}"
+  json_str() {
+    printf '%s' "$HOOK_JSON" | \
+      sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1
+  }
+  esc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+  SID=$(json_str session_id); [ -n "$SID" ] || SID=$(json_str conversation_id)
+  SID="${SID:-default}"
+  TP=$(json_str transcript_path)
+  CWD=$(json_str cwd)
+  # PostToolUse arrives as "Auto"; without Python we can't inspect the tool
+  # response, so map optimistic states conservatively.
+  case "$STATE" in
+    Auto|ToolFail) FB_STATE="Working" ;;
+    *) FB_STATE="$STATE" ;;
+  esac
+  payload="{\"state\":\"$FB_STATE\",\"agent\":\"Panda\",\"session_id\":\"$(esc "$SID")\",\"cwd\":\"$(esc "$CWD")\",\"transcript_path\":\"$(esc "$TP")\"}"
 fi
 
 # SessionEnd: Panda is quitting, so run curl synchronously — a
