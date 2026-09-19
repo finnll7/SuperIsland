@@ -1,0 +1,33 @@
+{
+  "sections": [
+    {
+      "title": "DeepSeek 余额",
+      "fields": [
+        {
+          "type": "toggle",
+          "key": "showDeepSeek",
+          "label": "在灵动岛显示 DeepSeek 余额",
+          "default": true,
+          "description": "仅在填写了 API Key 后生效，未配置时布局保持 Codex + Claude 两个圆环不变。"
+        },
+        {
+          "type": "text",
+          "key": "deepseekApiKey",
+          "label": "DeepSeek API Key",
+          "default": "",
+          "description": "在 platform.deepseek.com 的 API keys 页面创建，形如 sk-...，用于 GET /user/balance 查询余额。密钥以明文保存在应用偏好设置中。"
+        },
+        {
+          "type": "stepper",
+          "key": "deepseekBudget",
+          "label": "充值参考值（元）",
+          "default": 100,
+          "min": 1,
+          "max": 10000,
+          "step": 10,
+          "description": "DeepSeek 只提供余额金额、不提供配额百分比。圆环进度按「余额 / 该参考值」折算，颜色仍按 25% / 10% 分级，环旁始终显示真实金额。"
+        }
+      ]
+    }
+  ]
+}
