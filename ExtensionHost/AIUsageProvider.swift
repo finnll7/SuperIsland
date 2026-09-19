@@ -10,6 +10,18 @@ enum AIUsageProvider {
     private static let claudeKeychainAccessDeniedAtDefaultsKey = "aiUsage.claude.keychainAccessDeniedAt"
     private static let claudeKeychainPromptedDefaultsKey = "aiUsage.claude.keychainPrompted"
     private static let claudeKeychainAccessRetryInterval: TimeInterval = 24 * 60 * 60
+
+    // MARK: - DeepSeek
+    //
+    // DeepSeek 只有余额接口（金额），没有配额百分比。凭据按下面的优先级查找，
+    // 这样既能用环境变量/钥匙串这种不留明文的方式，也兼容早期把 Key 填在
+    // 扩展设置里的用户。
+    private static let deepseekBalanceURL = "https://api.deepseek.com/user/balance"
+    private static let deepseekKeychainServices = ["DeepSeek API Key", "deepseek"]
+    private static let deepseekKeychainPromptedDefaultsKey = "aiUsage.deepseek.keychainPrompted"
+    private static let deepseekExtensionKeyDefaultsKey =
+        "extensions.superisland.ai-usage.settings.deepseekApiKey"
+    private static let deepseekKeyJSONKeys: Set<String> = ["api_key", "apiKey", "key", "token"]
     private static var cachedSnapshot: [String: Any]?
     private static var cachedAt: Date?
     private static let cacheLock = NSLock()
@@ -46,7 +58,8 @@ enum AIUsageProvider {
         return existing ?? [
             "updatedAt": Int(nowDate.timeIntervalSince1970),
             "codex": ["available": false, "source": "loading"] as [String: Any],
-            "claude": ["available": false, "source": "loading"] as [String: Any]
+            "claude": ["available": false, "source": "loading"] as [String: Any],
+            "deepseek": ["available": false, "source": "loading"] as [String: Any]
         ]
     }
 
@@ -65,7 +78,8 @@ enum AIUsageProvider {
             let payload: [String: Any] = [
                 "updatedAt": now,
                 "codex": buildCodexPayload(updatedAt: now),
-                "claude": buildClaudePayload(updatedAt: now)
+                "claude": buildClaudePayload(updatedAt: now),
+                "deepseek": buildDeepSeekPayload(updatedAt: now)
             ]
 
             cacheLock.lock()
@@ -182,6 +196,199 @@ enum AIUsageProvider {
         }
         return nil
     }
+
+    // MARK: - DeepSeek
+
+    private static func buildDeepSeekPayload(updatedAt: Int) -> [String: Any] {
+        guard let credential = loadDeepSeekCredential() else {
+            return deepSeekFailurePayload(updatedAt: updatedAt, source: "unavailable", error: "未配置 API Key")
+        }
+
+        guard let url = URL(string: deepseekBalanceURL) else {
+            return deepSeekFailurePayload(updatedAt: updatedAt, source: credential.source, error: "接口地址无效")
+        }
+
+        let result = fetchJSONResult(url: url, bearerToken: credential.key, timeout: 4.0)
+
+        if result.status == 0 {
+            return deepSeekFailurePayload(updatedAt: updatedAt, source: credential.source, error: "请求失败")
+        }
+
+        guard (200..<300).contains(result.status) else {
+            let message: String
+            switch result.status {
+            case 401, 403: message = "API Key 无效或无权限"
+            case 429: message = "请求过于频繁"
+            default: message = "HTTP \(result.status)"
+            }
+            return deepSeekFailurePayload(updatedAt: updatedAt, source: credential.source, error: message)
+        }
+
+        guard let response = result.object else {
+            return deepSeekFailurePayload(updatedAt: updatedAt, source: credential.source, error: "响应解析失败")
+        }
+
+        let infos = (response["balance_infos"] as? [[String: Any]]) ?? []
+        let info = infos.first { ($0["currency"] as? String) == "CNY" } ?? infos.first
+
+        guard let info, let totalBalance = asDoubleOrNil(info["total_balance"]) else {
+            return deepSeekFailurePayload(updatedAt: updatedAt, source: credential.source, error: "返回数据中没有余额")
+        }
+
+        var payload: [String: Any] = [
+            "available": true,
+            "source": credential.source,
+            "sufficient": response["is_available"] as? Bool ?? true,
+            "currency": info["currency"] as? String ?? "CNY",
+            "totalBalance": totalBalance,
+            "error": NSNull(),
+            "updatedAt": updatedAt
+        ]
+        payload["grantedBalance"] = asDoubleOrNil(info["granted_balance"]) ?? NSNull()
+        payload["toppedUpBalance"] = asDoubleOrNil(info["topped_up_balance"]) ?? NSNull()
+        return payload
+    }
+
+    private static func deepSeekFailurePayload(updatedAt: Int, source: String, error: String) -> [String: Any] {
+        [
+            "available": false,
+            "source": source,
+            "sufficient": NSNull(),
+            "currency": NSNull(),
+            "totalBalance": NSNull(),
+            "grantedBalance": NSNull(),
+            "toppedUpBalance": NSNull(),
+            "error": error,
+            "updatedAt": updatedAt
+        ]
+    }
+
+    private static func loadDeepSeekCredential() -> (key: String, source: String)? {
+        if let key = normalizedDeepSeekKey(ProcessInfo.processInfo.environment["DEEPSEEK_API_KEY"]) {
+            return (key: key, source: "environment")
+        }
+
+        if let key = loadDeepSeekKeyFromFile() {
+            return (key: key, source: "file")
+        }
+
+        #if os(macOS)
+        if let key = loadDeepSeekKeychainLookup(allowUserInteraction: false).key {
+            return (key: key, source: "keychain")
+        }
+
+        // 仅当用户此前没有拒绝过、且钥匙串条目确实存在时才会弹出系统授权框；
+        // 条目不存在时 SecItemCopyMatching 直接返回 errSecItemNotFound，不会打扰用户。
+        if !UserDefaults.standard.bool(forKey: deepseekKeychainPromptedDefaultsKey) {
+            let lookup = loadDeepSeekKeychainLookup(allowUserInteraction: true)
+            if lookup.didReachItem {
+                UserDefaults.standard.set(true, forKey: deepseekKeychainPromptedDefaultsKey)
+            }
+            if let key = lookup.key {
+                return (key: key, source: "keychain")
+            }
+        }
+        #endif
+
+        if let key = normalizedDeepSeekKey(UserDefaults.standard.string(forKey: deepseekExtensionKeyDefaultsKey)) {
+            return (key: key, source: "settings")
+        }
+
+        return nil
+    }
+
+    private static func normalizedDeepSeekKey(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    /// 支持纯 Key 内容的文件，也支持 `{"api_key": "sk-..."}` 这类 JSON。
+    private static func loadDeepSeekKeyFromFile() -> String? {
+        let candidates = homePathCandidates([
+            ".deepseek/api_key",
+            ".deepseek/key",
+            ".config/deepseek/api_key"
+        ])
+
+        for candidate in candidates {
+            let url = URL(fileURLWithPath: candidate)
+            guard FileManager.default.fileExists(atPath: url.path),
+                  let data = try? Data(contentsOf: url) else {
+                continue
+            }
+
+            if let object = try? JSONSerialization.jsonObject(with: data),
+               let key = findStringValue(in: object, keys: deepseekKeyJSONKeys, depth: 0, maxDepth: 4),
+               let normalized = normalizedDeepSeekKey(key) {
+                return normalized
+            }
+
+            if let normalized = normalizedDeepSeekKey(String(data: data, encoding: .utf8)) {
+                return normalized
+            }
+        }
+
+        return nil
+    }
+
+    #if os(macOS)
+    private struct DeepSeekKeychainLookup {
+        var key: String?
+        /// 是否真正命中了钥匙串条目（用于避免在条目不存在时浪费掉「只问一次」的机会）。
+        var didReachItem: Bool = false
+    }
+
+    private static func loadDeepSeekKeychainLookup(allowUserInteraction: Bool) -> DeepSeekKeychainLookup {
+        let context = LAContext()
+        context.interactionNotAllowed = !allowUserInteraction
+        context.localizedReason = "Access DeepSeek API key for balance status."
+
+        var lookup = DeepSeekKeychainLookup()
+
+        for service in deepseekKeychainServices {
+            var query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecReturnData as String: true,
+                kSecMatchLimit as String: kSecMatchLimitOne
+            ]
+            query[kSecUseAuthenticationContext as String] = context
+
+            var result: CFTypeRef?
+            let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+            switch status {
+            case errSecSuccess:
+                lookup.didReachItem = true
+            case errSecItemNotFound:
+                continue
+            default:
+                // 包括用户取消、交互被禁止、权限不足等：条目是存在的，只是没读到。
+                lookup.didReachItem = true
+                continue
+            }
+
+            guard let data = result as? Data else { continue }
+
+            if let object = try? JSONSerialization.jsonObject(with: data),
+               let key = findStringValue(in: object, keys: deepseekKeyJSONKeys, depth: 0, maxDepth: 4),
+               let normalized = normalizedDeepSeekKey(key) {
+                lookup.key = normalized
+                return lookup
+            }
+
+            if let text = String(data: data, encoding: .utf8),
+               !text.hasPrefix("{"),
+               let normalized = normalizedDeepSeekKey(text) {
+                lookup.key = normalized
+                return lookup
+            }
+        }
+
+        return lookup
+    }
+    #endif
 
     // MARK: - Claude
 
@@ -772,6 +979,22 @@ enum AIUsageProvider {
         timeout: TimeInterval,
         extraHeaders: [String: String] = [:]
     ) -> [String: Any]? {
+        fetchJSONResult(
+            url: url,
+            bearerToken: bearerToken,
+            timeout: timeout,
+            extraHeaders: extraHeaders
+        ).object
+    }
+
+    /// 与 fetchJSON 相同，但额外返回 HTTP 状态码，便于区分「Key 无效」「限流」
+    /// 和「网络不可达」。status == 0 表示请求根本没拿到响应。
+    private static func fetchJSONResult(
+        url: URL,
+        bearerToken: String,
+        timeout: TimeInterval,
+        extraHeaders: [String: String] = [:]
+    ) -> (status: Int, object: [String: Any]?) {
         var request = URLRequest(url: url)
         request.timeoutInterval = timeout
         request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
@@ -782,14 +1005,17 @@ enum AIUsageProvider {
         }
 
         let semaphore = DispatchSemaphore(value: 0)
+        var status = 0
         var parsed: [String: Any]?
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             defer { semaphore.signal() }
 
-            guard error == nil,
-                  let http = response as? HTTPURLResponse,
-                  (200..<300).contains(http.statusCode),
+            guard error == nil, let http = response as? HTTPURLResponse else {
+                return
+            }
+            status = http.statusCode
+            guard (200..<300).contains(http.statusCode),
                   let data,
                   let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                 return
@@ -799,7 +1025,7 @@ enum AIUsageProvider {
 
         task.resume()
         _ = semaphore.wait(timeout: .now() + timeout + 0.3)
-        return parsed
+        return (status: status, object: parsed)
     }
 
     private static func asDouble(_ value: Any?) -> Double {

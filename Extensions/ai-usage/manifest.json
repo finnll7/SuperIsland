@@ -1,17 +1,17 @@
 {
   "id": "superisland.ai-usage",
   "name": "AI Usage Rings",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "minAppVersion": "1.0.0",
   "main": "index.js",
   "author": {
     "name": "SuperIsland"
   },
-  "description": "Codex and Claude usage + DeepSeek balance in the notch with ring indicators.",
+  "description": "DeepSeek account balance in the notch with a ring indicator.",
   "icon": "icon.svg",
   "license": "MIT",
   "categories": ["developer", "productivity"],
-  "permissions": ["usage", "network"],
+  "permissions": ["usage"],
   "capabilities": {
     "compact": true,
     "expanded": true,
