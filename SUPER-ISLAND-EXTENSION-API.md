@@ -196,7 +196,7 @@ Notes:
 
 ### `SuperIsland.system`
 
-- `getAIUsage()` -> usage object or `null`
+- `getAIUsage()` -> usage object or `null` (currently: DeepSeek account balance plus `credentialsPath`)
 - `getNowPlaying()` -> normalized now playing snapshot or `null`
 - `getLatestNotification()` -> latest mirrored notification object or `null`
 - `getRecentNotifications(limit?)` -> mirrored notifications array (newest first)

@@ -126,7 +126,7 @@ Supported permissions currently:
 - `storage` — persist extension-scoped key/value state
 - `network` — make requests through `SuperIsland.http.fetch()`
 - `media` — read the host app's normalized now-playing snapshot through `SuperIsland.system.getNowPlaying()`
-- `usage` — read local Codex and Claude usage summaries through `SuperIsland.system.getAIUsage()`
+- `usage` — read resolved AI provider usage (DeepSeek balance) through `SuperIsland.system.getAIUsage()`
 
 `capabilities.notificationFeed`:
 - When `true`, the extension is not shown as a separate module in island cycling.
@@ -376,41 +376,28 @@ declare namespace SuperIsland {
   // ─── Local Usage (requires "usage" permission) ───────
 
   namespace system {
-    /** Read locally available Codex and Claude usage summaries. */
+    /**
+     * Read the locally resolved AI provider usage (requires "usage" permission).
+     * DeepSeek credentials come from the credentials file described below; the
+     * `source` field reports where the key was found.
+     */
     function getAIUsage(): {
       updatedAt: number;
-      codex: {
+      /** Absolute path of the local credentials file (see ai-credentials.json). */
+      credentialsPath: string;
+      deepseek: {
+        /** false when no key was found, or the request failed. */
         available: boolean;
-        primary: null | {
-          usedPercent: number;
-          remainingPercent: number;
-          windowMinutes: number;
-          windowLabel: string;
-          resetsAt: number | null;
-        };
-        secondary: null | {
-          usedPercent: number;
-          remainingPercent: number;
-          windowMinutes: number;
-          windowLabel: string;
-          resetsAt: number | null;
-        };
-        planType: string | null;
-        hasCredits: boolean;
-        unlimited: boolean;
-        source?: "local-summary" | "oauth-api" | "auth-token" | "unavailable";
-      };
-      claude: {
-        available: boolean;
-        status?: "allowed" | "allowed_warning" | "rejected";
-        statusLabel?: string;
-        hoursTillReset?: number | null;
-        resetAt?: number | null;
-        model?: string | null;
-        updatedAt?: number;
-        unifiedRateLimitFallbackAvailable?: boolean;
-        isBlocked?: boolean;
-        source?: "local-summary" | "oauth-api" | "stats-cache" | "unavailable";
+        source: "config" | "environment" | "keychain" | "unavailable" | "loading";
+        /** DeepSeek's `is_available` flag; null when unknown. */
+        sufficient: boolean | null;
+        currency: string | null;
+        /** Account balance as an amount, not a percentage. */
+        totalBalance: number | null;
+        grantedBalance: number | null;
+        toppedUpBalance: number | null;
+        /** Human-readable failure reason, null on success. */
+        error: string | null;
       };
     } | null;
 

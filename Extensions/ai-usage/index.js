@@ -58,19 +58,42 @@ function budgetValue() {
 // 原生 provider 的凭据来源，便于确认 Key 是从哪儿读到的。
 function sourceLabel(source) {
   switch (source) {
+    case "config":
+      return "配置文件";
     case "environment":
       return "环境变量";
-    case "file":
-      return "本地文件";
     case "keychain":
       return "钥匙串";
-    case "settings":
-      return "扩展设置";
     case "loading":
       return "加载中";
     default:
       return null;
   }
+}
+
+// 凭据配置文件路径由原生 provider 给出，扩展只负责用 Finder 打开它所在的目录。
+function credentialsDirectoryURL() {
+  const usage = SuperIsland.system.getAIUsage();
+  const path =
+    usage && typeof usage === "object" && typeof usage.credentialsPath === "string"
+      ? usage.credentialsPath
+      : "";
+  if (!path) return null;
+
+  const directory = path.replace(/\/[^/]*$/, "");
+  if (!directory) return null;
+  return "file://" + encodeURI(directory) + "/";
+}
+
+function openCredentialsFolder() {
+  const url = credentialsDirectoryURL();
+  if (!url) return;
+  try {
+    SuperIsland.playFeedback("selection");
+  } catch (error) {
+    // 触觉反馈失败不影响打开目录
+  }
+  SuperIsland.openURL(url);
 }
 
 function currencySymbol(currency) {
@@ -158,6 +181,12 @@ function balanceRing(model, lineWidth) {
 }
 
 SuperIsland.registerModule({
+  onAction(actionID) {
+    if (actionID === "openCredentialsFolder") {
+      openCredentialsFolder();
+    }
+  },
+
   compact() {
     const model = balanceModel();
     if (!model) return View.text("");

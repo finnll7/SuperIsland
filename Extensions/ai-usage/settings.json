@@ -18,14 +18,14 @@
           "min": 1,
           "max": 10000,
           "step": 10,
-          "description": "DeepSeek 只提供余额金额、不提供配额百分比。圆环进度按「余额 / 该参考值」折算，颜色仍按 25% / 10% 分级，环旁始终显示真实余额。"
+          "description": "可点 +/- 也可直接输入数字。DeepSeek 只提供余额金额、不提供配额百分比，圆环进度按「余额 / 该参考值」折算，颜色按 25% / 10% 分级，环旁始终显示真实余额。"
         },
         {
-          "type": "text",
-          "key": "deepseekApiKey",
-          "label": "DeepSeek API Key（兜底）",
-          "default": "",
-          "description": "仅作为最后的兜底来源。原生 provider 按此顺序查找凭据：环境变量 DEEPSEEK_API_KEY → ~/.deepseek/api_key → 钥匙串（服务名 DeepSeek API Key）→ 本项。前三者不落明文，建议优先使用；本项会以明文保存在应用偏好设置中。"
+          "type": "button",
+          "key": "openCredentialsFolder",
+          "label": "打开凭据配置文件夹",
+          "action": "openCredentialsFolder",
+          "description": "API KEY 统一存放在 ~/Library/Application Support/SuperIsland/ai-credentials.json，同一提供方可配置多个 KEY。"
         }
       ]
     }

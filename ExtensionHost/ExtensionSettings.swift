@@ -275,12 +275,15 @@ struct ExtensionSettingsRenderer: View {
             ExtensionSliderSettingsField(extensionID: extensionID, field: field)
 
         case "stepper":
-            Stepper(
-                "\(field.label): \(Int(doubleBinding(for: field).wrappedValue))",
-                value: doubleBinding(for: field),
-                in: (field.min ?? 0)...(field.max ?? 100),
-                step: field.step ?? 1
-            )
+            // 复用主设置的 StepperField：加减按钮之外还能直接输入数字。
+            VStack(alignment: .leading, spacing: 4) {
+                Text(field.label)
+                StepperField(
+                    value: doubleBinding(for: field),
+                    step: field.step ?? 1,
+                    range: (field.min ?? 0)...(field.max ?? 100)
+                ) { String(format: "%g", $0) }
+            }
 
         case "picker":
             Picker(field.label, selection: stringBinding(for: field)) {
